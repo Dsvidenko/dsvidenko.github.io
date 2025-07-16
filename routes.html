@@ -9,56 +9,46 @@
   <div id="log">Initializing...</div>
 
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-  <script>
-    const log = (msg) => {
-      console.log(msg);
-      document.getElementById("log").innerHTML += `<br/>${msg}`;
-    };
+<script>
+  const msalConfig = {
+    auth: {
+      clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+      redirectUri: "https://dsvidenko.github.io/routes.html"
+    }
+  };
 
-    const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/routes.html"
-      }
-    };
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    window.addEventListener("DOMContentLoaded", async () => {
-      log("MSAL loaded, handling redirect...");
-
-      try {
-        const result = await msalInstance.handleRedirectPromise();
-        log("Redirect result received.");
-        
-        if (result) {
-          log("Login success. Setting active account.");
-          msalInstance.setActiveAccount(result.account);
+  window.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const result = await msalInstance.handleRedirectPromise();
+      if (result) {
+        msalInstance.setActiveAccount(result.account);
+      } else {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
         } else {
-          const accounts = msalInstance.getAllAccounts();
-          if (accounts.length > 0) {
-            log("Using cached account.");
-            msalInstance.setActiveAccount(accounts[0]);
-          } else {
-            log("❌ No account found after redirect.");
-            return;
-          }
+          document.body.innerHTML = '<h2>Not signed in. Please go back and connect.</h2>';
+          return;
         }
-
-        log("Trying to acquire token silently...");
-
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          scopes: ["Files.Read.All", "User.Read"]
-        });
-
-        log("✅ Token acquired!");
-        console.log("Access token:", tokenResponse.accessToken);
-
-      } catch (err) {
-        log("❌ Error during redirect or token: " + err.message);
-        console.error(err);
       }
-    });
-  </script>
+
+      const response = await msalInstance.acquireTokenSilent({
+        scopes: ["Files.Read.All", "User.Read"]
+      });
+
+      // Successfully got token - proceed with app logic
+      console.log("Token acquired:", response.accessToken);
+      document.body.innerHTML = "<h2>Logged in successfully.</h2>";
+
+    } catch (error) {
+      console.error("Error acquiring token silently:", error);
+      document.body.innerHTML = `<h2>Error: ${error.message}</h2><p>Please try logging in again.</p>`;
+      // Don't redirect automatically here — let user retry manually
+    }
+  });
+</script>
+
 </body>
 </html>
