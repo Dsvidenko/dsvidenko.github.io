@@ -94,12 +94,14 @@
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
         redirectUri: "https://dsvidenko.github.io/routes.html"};
     const msalInstance = new msal.PublicClientApplication(msalConfig);
-       function connectOneDrive() {
-  msalInstance.loginRedirect({
-    scopes: ["Files.Read.All", "User.Read"],
-    redirectUri: "https://dsvidenko.github.io/routes.html"
+    
+  function connectOneDrive() {
+    console.log("pressed button")
+    msalInstance.loginRedirect({
+      scopes: ["Files.Read.All", "User.Read"],
+      redirectUri: "https://dsvidenko.github.io/routes.html"
   });
-}
+  }
 
       
     
