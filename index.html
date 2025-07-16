@@ -89,18 +89,13 @@
 
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-   
-    function connectOneDrive() {
-       const msalConfig = {
+   const msalConfig = {
       auth: {
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/routes.html"
-      }
-    };
-
+        redirectUri: "https://dsvidenko.github.io/routes.html"};
     const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-      document.querySelector("button").textContent = "Connecting...";
+    function connectOneDrive() {
+       document.querySelector("button").textContent = "Connecting...";
       try {
         msalInstance.loginRedirect({
           scopes: ["Files.Read.All", "User.Read"],
@@ -109,7 +104,13 @@
       } catch (error) {
         console.error("Error during OneDrive login:", error);
       }
-    }
+      }
+    
+
+    
+
+      
+
   </script>
 </body>
 </html>
