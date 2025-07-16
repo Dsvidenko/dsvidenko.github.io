@@ -15,14 +15,6 @@
       flex-direction: column;
       align-items: center;
       padding: 2rem;
-    }
-    <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script>
-  const map = L.map('map').setView([47.6062, -122.3321], 10); // Example: Seattle coords
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-</script>
 
 
     header {
@@ -81,7 +73,13 @@
     </p>
     <button onclick="connectOneDrive()">Connect to OneDrive</button>
   </header>
-
+ <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script>
+  const map = L.map('map').setView([47.6062, -122.3321], 10); // Example: Seattle coords
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+</script>
   <footer>
     &copy; 2025 Dan Svidenko. All rights reserved.
   </footer>
