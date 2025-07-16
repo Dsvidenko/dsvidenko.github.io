@@ -1,100 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Route Viewer</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 1rem;
-      background: #f4f4f4;
-    }
-
-    h1 {
-      text-align: center;
-    }
-
-    #file-list {
-      margin-top: 1rem;
-    }
-
-    #map {
-      height: 400px;
-      margin-top: 2rem;
-    }
-  </style>
 </head>
 <body>
   <h1>Welcome to Route Viewer</h1>
-  <div id="file-list">Loading files...</div>
-  <div id="map"></div>
+  <div id="file-list">Loading OneDrive files...</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-  const msalConfig = {
-    auth: {
-      clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-      redirectUri: "https://dsvidenko.github.io/routes.html"
-    }
-  };
+    const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: "https://dsvidenko.github.io/routes.html"
+      }
+    };
 
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-async function init() {
-  try {
-    const result = await msalInstance.handleRedirectPromise();
+    async function init() {
+      try {
+        const result = await msalInstance.handleRedirectPromise();
 
-    if (result) {
-      msalInstance.setActiveAccount(result.account);
-      console.log("Login successful via redirect:", result.account.username);
-    } else {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        msalInstance.setActiveAccount(accounts[0]);
-        console.log("Using cached account:", accounts[0].username);
-      } else {
-        document.getElementById("file-list").textContent = "Not signed in.";
-        return;
+        if (result) {
+          console.log("Redirect login complete:", result);
+          msalInstance.setActiveAccount(result.account);
+        } else {
+          console.log("No redirect result. Checking cached accounts...");
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            msalInstance.setActiveAccount(accounts[0]);
+          } else {
+            document.getElementById("file-list").textContent = "Not signed in.";
+            return;
+          }
+        }
+
+        // Now you're signed in — get token
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["Files.Read.All", "User.Read"]
+        });
+
+        const accessToken = response.accessToken;
+        console.log("Access token:", accessToken);
+
+        // Optional: Show success
+        document.getElementById("file-list").textContent = "Logged in successfully.";
+
+      } catch (err) {
+        console.error("Error during redirect handling:", err);
+        document.getElementById("file-list").textContent = "Error logging in.";
       }
     }
 
-    // Now you have an active account
-    const tokenResponse = await msalInstance.acquireTokenSilent({
-      scopes: ["Files.Read.All", "User.Read"]
-    });
-
-    const accessToken = tokenResponse.accessToken;
-
-    // Example fetch call to list OneDrive files
-    const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    });
-
-    const data = await res.json();
-    const list = document.getElementById("file-list");
-    list.innerHTML = "<h3>Files:</h3>";
-    data.value.forEach(file => {
-      if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
-        const item = document.createElement("div");
-        item.textContent = file.name;
-        list.appendChild(item);
-      }
-    });
-
-  } catch (error) {
-    console.error("Error handling redirect login:", error);
-    document.getElementById("file-list").textContent = "Error logging in.";
-  }
-}
-
-window.addEventListener("DOMContentLoaded", init);
-</script>
-
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
 </body>
 </html>
