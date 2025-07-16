@@ -35,56 +35,66 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-    const msalConfig = {
-      auth: {
-        clientId: "YOUR_CLIENT_ID",
-        redirectUri: window.location.origin + "/routes.html"
+  const msalConfig = {
+    auth: {
+      clientId: "YOUR_CLIENT_ID",
+      redirectUri: window.location.origin + "/routes.html"
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  async function init() {
+    try {
+      const result = await msalInstance.handleRedirectPromise();
+
+      if (result !== null) {
+        msalInstance.setActiveAccount(result.account);
+      } else {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
+        }
       }
-    };
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    async function init() {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length === 0) {
+      const account = msalInstance.getActiveAccount();
+      if (!account) {
         document.getElementById("file-list").textContent = "Not signed in.";
         return;
       }
 
-      msalInstance.setActiveAccount(accounts[0]);
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        scopes: ["Files.Read.All", "User.Read"]
+      });
 
-      try {
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          scopes: ["Files.Read.All", "User.Read"]
-        });
+      const accessToken = tokenResponse.accessToken;
 
-        const accessToken = tokenResponse.accessToken;
+      const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
 
-        const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        });
+      const data = await res.json();
+      const list = document.getElementById("file-list");
+      list.innerHTML = "<h3>Files:</h3>";
 
-        const data = await res.json();
-        const list = document.getElementById("file-list");
-        list.innerHTML = "<h3>Files:</h3>";
+      data.value.forEach(file => {
+        if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
+          const item = document.createElement("div");
+          item.textContent = file.name;
+          list.appendChild(item);
+        }
+      });
 
-        data.value.forEach(file => {
-          if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
-            const item = document.createElement("div");
-            item.textContent = file.name;
-            list.appendChild(item);
-          }
-        });
-
-      } catch (err) {
-        console.error("Error getting files:", err);
-        document.getElementById("file-list").textContent = "Failed to load files.";
-      }
+    } catch (err) {
+      console.error("MSAL redirect handling error:", err);
+      document.getElementById("file-list").textContent = "Error handling login.";
     }
+  }
 
-    window.addEventListener("DOMContentLoaded", init);
-  </script>
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+
 </body>
 </html>
