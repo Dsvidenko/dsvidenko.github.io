@@ -172,8 +172,11 @@
           const viewBtn = document.createElement("button");
           viewBtn.textContent = "View";
           viewBtn.onclick = () => {
-            window.location.href = `view.html?route=${routeParam}`;
-          };
+          const routeParam = encodeURIComponent(file.downloadUrl || file.name);
+          const nameParam = encodeURIComponent(file.name);
+          window.location.href = `view.html?route=${routeParam}&name=${nameParam}`;
+};
+
 
           li.appendChild(nameSpan);
           li.appendChild(viewBtn);
