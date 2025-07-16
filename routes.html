@@ -2,337 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Evaluation Insights - Routes</title>
-  <link rel="icon" href="favicon.ico?v=2" />
-  
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""
-  />
-  
+  <title>Routes</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0; padding: 1rem;
-      background: #f9f9f9;
-      color: #222;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
-    h1 {
-      margin-bottom: 1rem;
-    }
-    #fileList {
-      max-width: 900px;
-      width: 100%;
-      margin-bottom: 1.5rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 0 8px rgb(0 0 0 / 0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    th, td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
-      background-color: #0078d4;
-      color: white;
-    }
-    button {
-      background-color: #0078d4;
-      color: white;
-      border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background-color: #005fa3;
-    }
-    #viewer {
-      display: flex;
-      max-width: 900px;
-      width: 100%;
-      height: 400px;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-    #map {
-      flex: 1 1 60%;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgb(0 0 0 / 0.1);
-    }
-    #elevationChartContainer {
-      flex: 1 1 40%;
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgb(0 0 0 / 0.1);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 8px 12px; border: 1px solid #ccc; text-align: left; }
+    button { padding: 6px 10px; }
   </style>
 </head>
 <body>
-  <h1>Route Evaluation Insights — Your Routes</h1>
-  <div id="fileList">
-    <p>Loading your route files from OneDrive...</p>
-  </div>
-  <div id="viewer" style="display:none;">
-    <div id="map"></div>
-    <div id="elevationChartContainer">
-      <canvas id="elevationChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Dependencies -->
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    crossorigin=""
-  ></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
-
-
+  <h1>Your Routes</h1>
+  <table id="routesTable">
+    <thead>
+      <tr><th>File Name</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    // Confirm toGeoJSON is loaded
-    console.log("toGeoJSON is:", typeof toGeoJSON);
+    const fileList = JSON.parse(localStorage.getItem('routes') || '[]'); // stored after login
 
-    const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: window.location.origin + window.location.pathname
-      }
-    };
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    function renderRoutes() {
+      const tbody = document.querySelector('#routesTable tbody');
+      tbody.innerHTML = '';
+      fileList.forEach(file => {
+        const tr = document.createElement('tr');
 
-    const scopes = ["Files.Read.All", "User.Read"];
+        const tdName = document.createElement('td');
+        tdName.textContent = file.name;
 
-    let map, elevationChart;
-
-    function initMap() {
-      if (map) {
-        map.remove();
-      }
-      map = L.map("map").setView([47.6062, -122.3321], 10);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(map);
-    }
-
-    function initElevationChart() {
-      const ctx = document.getElementById("elevationChart").getContext("2d");
-      if (elevationChart) {
-        elevationChart.destroy();
-      }
-      elevationChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [{
-            label: "Elevation (m)",
-            data: [],
-            borderColor: "#0078d4",
-            backgroundColor: "rgba(0, 120, 212, 0.2)",
-            fill: true,
-            tension: 0.3,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: {
-              title: { display: true, text: "Point Index" },
-            },
-            y: {
-              title: { display: true, text: "Elevation (m)" },
-            }
-          },
-          plugins: {
-            legend: { display: true }
-          }
-        }
-      });
-    }
-
-    async function fetchRouteFiles() {
-      const account = msalInstance.getActiveAccount();
-      if (!account) {
-        alert("You must sign in first.");
-        window.location.href = "index.html";
-        return [];
-      }
-
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        scopes,
-        account
-      });
-
-      const accessToken = tokenResponse.accessToken;
-      const endpoint = "https://graph.microsoft.com/v1.0/me/drive/root/children";
-
-      const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-
-      if (!res.ok) {
-        throw new Error(`Graph API error: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      return data.value.filter(file => {
-        const ext = file.name.split('.').pop().toLowerCase();
-        return ext === "gpx" || ext === "geojson";
-      });
-    }
-
-    async function loadRouteFile(accessToken, file) {
-      const downloadUrl = file["@microsoft.graph.downloadUrl"];
-      const res = await fetch(downloadUrl);
-      if (!res.ok) throw new Error(`Failed to download ${file.name}`);
-      const text = await res.text();
-
-      if (file.name.toLowerCase().endsWith(".gpx")) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(text, "application/xml");
-        return toGeoJSON.gpx(xmlDoc);
-      } else if (file.name.toLowerCase().endsWith(".geojson")) {
-        return JSON.parse(text);
-      } else {
-        throw new Error("Unsupported file format");
-      }
-    }
-
-    function showRoute(geojson) {
-      initMap();
-      initElevationChart();
-
-      // Remove old route layers
-      map.eachLayer(layer => {
-        if (layer instanceof L.Polyline || layer instanceof L.Marker) {
-          map.removeLayer(layer);
-        }
-      });
-
-      const routeLayer = L.geoJSON(geojson, {
-        style: { color: "#0078d4", weight: 4 }
-      }).addTo(map);
-
-      map.fitBounds(routeLayer.getBounds());
-
-      // Elevation data extraction
-      const elevationData = [];
-      if (geojson.features && geojson.features.length) {
-        geojson.features.forEach(feature => {
-          if (feature.geometry.type === "LineString") {
-            feature.geometry.coordinates.forEach(coord => {
-              // coord = [lon, lat, ele?]
-              const ele = coord.length >= 3 ? coord[2] : null;
-              if (ele !== null) elevationData.push(ele);
-            });
-          }
-        });
-      }
-
-      elevationChart.data.labels = elevationData.map((_, i) => i + 1);
-      elevationChart.data.datasets[0].data = elevationData;
-      elevationChart.update();
-
-      document.getElementById("viewer").style.display = "flex";
-    }
-
-    async function renderFiles() {
-      try {
-        const files = await fetchRouteFiles();
-        const account = msalInstance.getActiveAccount();
-        const tokenResponse = await msalInstance.acquireTokenSilent({ scopes, account });
-        const accessToken = tokenResponse.accessToken;
-
-        if (!files.length) {
-          document.getElementById("fileList").innerHTML = "<p>No GPX or GeoJSON files found in your OneDrive root.</p>";
-          return;
-        }
-
-        const table = document.createElement("table");
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>Filename</th>
-              <th>Last Modified</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-        `;
-        const tbody = document.createElement("tbody");
-
-        files.forEach(file => {
-          const tr = document.createElement("tr");
-
-          const nameTd = document.createElement("td");
-          nameTd.textContent = file.name;
-
-          const modTd = document.createElement("td");
-          modTd.textContent = new Date(file.lastModifiedDateTime).toLocaleString();
-
-          const actionsTd = document.createElement("td");
-          const btn = document.createElement("button");
-          btn.textContent = "View";
-          btn.addEventListener("click", async () => {
-            try {
-              const geojson = await loadRouteFile(accessToken, file);
-              showRoute(geojson);
-            } catch (err) {
-              alert("Failed to load route: " + err.message);
-              console.error(err);
-            }
+        const tdActions = document.createElement('td');
+        const viewBtn = document.createElement('button');
+        viewBtn.textContent = 'View';
+        viewBtn.onclick = () => {
+          // Pass name and id as query params to view.html
+          const query = new URLSearchParams({
+            name: file.name,
+            id: file.id
           });
+          window.location.href = `view.html?${query.toString()}`;
+        };
 
-          actionsTd.appendChild(btn);
-          tr.appendChild(nameTd);
-          tr.appendChild(modTd);
-          tr.appendChild(actionsTd);
-          tbody.appendChild(tr);
-        });
-
-        table.appendChild(tbody);
-        const fileListDiv = document.getElementById("fileList");
-        fileListDiv.innerHTML = "";
-        fileListDiv.appendChild(table);
-      } catch (err) {
-        document.getElementById("fileList").innerHTML = `<p>Error loading files: ${err.message}</p>`;
-        console.error(err);
-      }
+        tdActions.appendChild(viewBtn);
+        tr.appendChild(tdName);
+        tr.appendChild(tdActions);
+        tbody.appendChild(tr);
+      });
     }
 
-    async function main() {
-      const account = msalInstance.getActiveAccount();
-      if (!account) {
-        alert("You must sign in first.");
-        window.location.href = "index.html";
-        return;
-      }
-      await renderFiles();
-    }
-
-    window.onload = () => {
-      main();
-    };
+    renderRoutes();
   </script>
 </body>
 </html>
