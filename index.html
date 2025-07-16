@@ -57,18 +57,16 @@
 </head>
 <body>
   <h1>Route Evaluation Insights</h1>
-  <p>
-    Welcome to the Route Evaluation Insights tool. Click below to connect your OneDrive account and begin exploring shared routes.
-  </p>
+  <p>Connect your OneDrive account to access and evaluate route data.</p>
   <button id="connectBtn">Connect to OneDrive</button>
   <div id="message"></div>
 
   <script>
-    (function() {
+    (function () {
       const msalConfig = {
         auth: {
           clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-          redirectUri: window.location.origin + window.location.pathname
+          redirectUri: window.location.href
         }
       };
 
@@ -76,38 +74,41 @@
       const connectBtn = document.getElementById("connectBtn");
       const messageDiv = document.getElementById("message");
 
-      // Protected variable to track login state
       let isLoggedIn = false;
 
-      async function connectOneDrive() {
+      connectBtn.addEventListener("click", async () => {
+        connectBtn.disabled = true;
+        connectBtn.textContent = "Connecting...";
+        messageDiv.textContent = "";
+        messageDiv.style.color = "green";
+
         try {
+          console.log("Launching popup login...");
           const loginResponse = await msalInstance.loginPopup({
             scopes: ["Files.Read.All", "User.Read"]
           });
 
-          msalInstance.setActiveAccount(loginResponse.account);
-          isLoggedIn = true;  // update protected login state
-          connectBtn.textContent = "Access Routes";
-          messageDiv.textContent = "Login successful!";
-          messageDiv.style.color = "green";
-
-          // You can now check isLoggedIn internally to gate features
-          console.log("User is logged in:", isLoggedIn);
-
-        } catch (error) {
-          console.error("Login failed:", error);
-          messageDiv.textContent = "Login failed, please try again.";
+          if (loginResponse && loginResponse.account) {
+            msalInstance.setActiveAccount(loginResponse.account);
+            isLoggedIn = true;
+            console.log("Login success:", loginResponse.account);
+            connectBtn.textContent = "Access Routes";
+            messageDiv.textContent = "Login successful!";
+          } else {
+            throw new Error("Login returned no account.");
+          }
+        } catch (err) {
+          console.error("Login failed:", err);
+          connectBtn.textContent = "Connect to OneDrive";
+          messageDiv.textContent = "Login failed. Please try again.";
           messageDiv.style.color = "red";
-          isLoggedIn = false;
         }
-      }
 
-      connectBtn.addEventListener("click", connectOneDrive);
+        connectBtn.disabled = false;
+      });
 
-      // Expose a safe method to check login status within this scope
-      window.checkLoginStatus = function() {
-        return isLoggedIn;
-      };
+      // Optional global access to login state (for later components)
+      window.checkLoginStatus = () => isLoggedIn;
     })();
   </script>
 </body>
