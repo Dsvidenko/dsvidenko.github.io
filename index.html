@@ -77,35 +77,40 @@
       let isLoggedIn = false;
 
       connectBtn.addEventListener("click", async () => {
-        connectBtn.disabled = true;
-        connectBtn.textContent = "Connecting...";
-        messageDiv.textContent = "";
-        messageDiv.style.color = "green";
+  connectBtn.disabled = true;
+  connectBtn.textContent = "Connecting...";
+  messageDiv.textContent = "";
+  messageDiv.style.color = "green";
 
-        try {
-          console.log("Launching popup login...");
-          const loginResponse = await msalInstance.loginPopup({
-            scopes: ["Files.Read.All", "User.Read"]
-          });
+  try {
+    console.log("Launching loginPopup...");
 
-          if (loginResponse && loginResponse.account) {
-            msalInstance.setActiveAccount(loginResponse.account);
-            isLoggedIn = true;
-            console.log("Login success:", loginResponse.account);
-            connectBtn.textContent = "Access Routes";
-            messageDiv.textContent = "Login successful!";
-          } else {
-            throw new Error("Login returned no account.");
-          }
-        } catch (err) {
-          console.error("Login failed:", err);
-          connectBtn.textContent = "Connect to OneDrive";
-          messageDiv.textContent = "Login failed. Please try again.";
-          messageDiv.style.color = "red";
-        }
+    const loginResponse = await msalInstance.loginPopup({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
 
-        connectBtn.disabled = false;
-      });
+    console.log("MSAL login response:", loginResponse);
+
+    if (loginResponse && loginResponse.account) {
+      msalInstance.setActiveAccount(loginResponse.account);
+      isLoggedIn = true;
+      connectBtn.textContent = "Access Routes";
+      messageDiv.textContent = "Login successful!";
+      console.log("Login succeeded for:", loginResponse.account);
+    } else {
+      throw new Error("loginPopup succeeded, but no account was returned.");
+    }
+
+  } catch (error) {
+    console.error("Login failed:", error);
+    connectBtn.textContent = "Connect to OneDrive";
+    messageDiv.textContent = "Login failed. Check console.";
+    messageDiv.style.color = "red";
+  }
+
+  connectBtn.disabled = false;
+});
+
 
       // Optional global access to login state (for later components)
       window.checkLoginStatus = () => isLoggedIn;
