@@ -106,7 +106,7 @@ const msalInstance = new msal.PublicClientApplication(msalConfig);
     // Initiate login
     msalInstance.loginRedirect({
     scopes: ["Files.Read.All", "User.Read"],
-    redirectUri: window.location.origin + "/routes.html"
+    redirectUri: "dsvidenko.github.io/routes.html"
   });
 
     console.log("Logged in as:", loginResponse.account.username);
