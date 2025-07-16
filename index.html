@@ -62,6 +62,7 @@
   </style>
 </head>
 <body>
+ <body>
   <header>
     <h1>Route Evaluation Insights</h1>
     <p>
@@ -73,7 +74,7 @@
     </p>
     <button onclick="connectOneDrive()">Connect to OneDrive</button>
   </header>
- <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
+   <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script>
@@ -86,9 +87,62 @@
 
   <script>
     function connectOneDrive() {
-      alert("OAuth2 login will go here.\n(To be implemented with MSAL.js or Python backend redirect.)");
-      // Future: Redirect to Microsoft login or start PKCE flow
-    }
+  console.log("Redirecting to Microsoft login...");
+  // Simulate auth for now
+  window.location.href = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?...";
+}
+
   </script>
 </body>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<script>
+    const msalConfig = {
+  auth: {
+    clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+    redirectUri: window.location.origin,
+  }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+async function connectOneDrive() {
+  try {
+    const loginResponse = await msalInstance.loginPopup({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
+
+    console.log("Login successful:", loginResponse);
+
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: ["Files.Read.All"]
+    });
+
+    console.log("Access token:", tokenResponse.accessToken);
+    // Now use token to call Microsoft Graph API
+  } catch (err) {
+    console.error("Auth failed:", err);
+  }
+}
+
+  async function loadRoute(file) {
+    const res = await fetch(file);
+    const text = await res.text();
+
+    if (file.endsWith(".gpx")) {
+      console.log("GPX loaded:", file);
+      // TODO: GPX parse logic here
+    } else if (file.endsWith(".geojson")) {
+      const data = await res.json();
+      console.log("GeoJSON loaded:", data);
+      // TODO: render on map
+    } else {
+      console.warn("Unsupported file type:", file);
+    }
+  }
+
+  // Example call
+  loadRoute("test-route.gpx"); // Replace with your actual file
+</script>
+
 </html>
+
