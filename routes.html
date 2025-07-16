@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Route Viewer - Route Evaluation Insights</title>
+  
 
   <!-- MSAL for auth -->
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
@@ -238,7 +239,8 @@
     loading.classList.remove('hidden');
 
     try {
-      const fileData = await fetch(file["@microsoft.graph.downloadUrl"]).then(res => res.text());
+      window.onload = () => {
+   const fileData = await fetch(file["@microsoft.graph.downloadUrl"]).then(res => res.text());
 
       let geojson;
 
@@ -344,6 +346,8 @@
       await fetchFiles(token);
     }
   })();
+}
+     
 
 </script>
 </body>
