@@ -1,5 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle coords
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  </script>
+
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <script>
+   const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: "https://dsvidenko.github.io/routes.html"};
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    
+  function connectOneDrive() {
+    console.log("pressed button")
+    msalInstance.loginRedirect({
+      scopes: ["Files.Read.All", "User.Read"],
+      redirectUri: "https://dsvidenko.github.io/routes.html"
+  });
+  }
+  </script>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -81,35 +103,6 @@
     &copy; 2025 Dan Svidenko. All rights reserved.
   </footer>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle coords
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  </script>
-
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-  <script>
-   const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/routes.html"};
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    
-  function connectOneDrive() {
-    console.log("pressed button")
-    msalInstance.loginRedirect({
-      scopes: ["Files.Read.All", "User.Read"],
-      redirectUri: "https://dsvidenko.github.io/routes.html"
-  });
-  }
-
-      
-    
-
-    
-
-      
-
-  </script>
+  
 </body>
 </html>
