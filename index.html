@@ -98,33 +98,16 @@
 
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-async function connectOneDrive() {
-  try {
-    const loginResponse = await msalInstance.loginPopup({
-      scopes: ["Files.Read.All", "User.Read"]
-    });
-
-    console.log("Login successful:", loginResponse);
-
-    const tokenResponse = await msalInstance.acquireTokenSilent({
-      scopes: ["Files.Read.All"]
-    });
-
-    console.log("Access token:", tokenResponse.accessToken);
-    // Now use token to call Microsoft Graph API
-  } catch (err) {
-    console.error("Auth failed:", err);
-  }
-}
 
   async function connectOneDrive() {
   document.querySelector("button").textContent = "Connecting...";
 
   try {
     // Initiate login
-    const loginResponse = await msalInstance.loginPopup({
-      scopes: ["Files.Read.All", "User.Read"]
-    });
+    msalInstance.loginRedirect({
+    scopes: ["Files.Read.All", "User.Read"],
+    redirectUri: window.location.origin + "/routes.html"
+  });
 
     console.log("Logged in as:", loginResponse.account.username);
 
