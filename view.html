@@ -2,120 +2,183 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Route Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route Viewer - Route Evaluation Insights</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link
     rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      color: #222;
+    }
+    #content {
+      display: flex;
+      flex-grow: 1;
+      overflow: hidden;
     }
     #map {
-      height: 60%;
+      flex: 2;
+      height: 100%;
     }
-    #chart-container {
-      height: 40%;
+    #elevation {
+      flex: 1;
+      height: 100%;
+      border-left: 2px solid #ddd;
+      background: #f9f9f9;
       padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
     }
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
+    #error {
+      padding: 1rem;
+      color: red;
+      font-weight: bold;
+      text-align: center;
+      margin: auto;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div id="chart-container">
-    <canvas id="elevationChart"></canvas>
+  <h1 style="text-align:center; margin: 1rem 0;">Route Viewer</h1>
+  <div id="content">
+    <div id="map"></div>
+    <div id="elevation"></div>
   </div>
+  <div id="error" style="display:none;"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/togeojson@0.16.0/togeojson.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- GPX parser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+
+  <!-- Leaflet Elevation (for GPX) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-elevation/dist/leaflet-elevation.min.css"
+  />
+  <script src="https://unpkg.com/leaflet-elevation/dist/leaflet-elevation.min.js"></script>
 
   <script>
-    function getQueryParam(param) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(param);
+    // Helper to get query param
+    function getQueryParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
     }
 
-    async function fetchAndRenderRoute() {
-      const route = getQueryParam("route");
-      if (!route) {
-        alert("Missing route id");
-        return;
-      }
+    const routeUrl = getQueryParam("route");
+    const fileName = getQueryParam("name") || "";
 
-      const response = await fetch(route);
-      const blob = await response.blob();
+    const errorEl = document.getElementById("error");
+    const mapEl = document.getElementById("map");
+    const elevationEl = document.getElementById("elevation");
 
-      let geojson;
+    if (!routeUrl) {
+      showError("Missing route URL.");
+    } else {
+      const lowerName = fileName.toLowerCase();
 
-      if (route.toLowerCase().endsWith(".gpx")) {
-        const text = await blob.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        geojson = toGeoJSON.gpx(xml);
-      } else if (route.toLowerCase().endsWith(".geojson")) {
-        geojson = await response.json();
+      if (lowerName.endsWith(".gpx")) {
+        loadGPX(routeUrl);
+      } else if (lowerName.endsWith(".geojson") || lowerName.endsWith(".json")) {
+        loadGeoJSON(routeUrl);
       } else {
-        alert("Unsupported file type.");
-        return;
+        showError(`Unsupported file type: ${fileName}`);
       }
+    }
+
+    function showError(message) {
+      errorEl.style.display = "block";
+      errorEl.textContent = message;
+      mapEl.style.display = "none";
+      elevationEl.style.display = "none";
+    }
+
+    function loadGPX(url) {
+      elevationEl.style.display = "block";
+      mapEl.style.display = "block";
+      errorEl.style.display = "none";
 
       const map = L.map("map").setView([0, 0], 2);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18
+
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
       }).addTo(map);
 
-      const geoLayer = L.geoJSON(geojson);
-      geoLayer.addTo(map);
-      map.fitBounds(geoLayer.getBounds());
+      fetch(url)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to load GPX file");
+          return res.text();
+        })
+        .then((gpxText) => {
+          const parser = new DOMParser();
+          const gpxDoc = parser.parseFromString(gpxText, "application/xml");
+          const geojson = toGeoJSON.gpx(gpxDoc);
 
-      // Extract elevation data
-      const elevationData = [];
-      geojson.features.forEach((feature) => {
-        const coords = feature.geometry.coordinates;
-        coords.forEach(([lon, lat, ele]) => {
-          if (typeof ele === "number") {
-            elevationData.push(ele);
-          }
-        });
-      });
+          const geojsonLayer = L.geoJSON(geojson, {
+            style: { color: "#0078d4", weight: 4 },
+          }).addTo(map);
 
-      if (elevationData.length > 0) {
-        const ctx = document.getElementById("elevationChart").getContext("2d");
-        new Chart(ctx, {
-          type: "line",
-          data: {
-            labels: elevationData.map((_, i) => i),
-            datasets: [
-              {
-                label: "Elevation (m)",
-                data: elevationData,
-                fill: true,
-                borderColor: "blue",
-                backgroundColor: "rgba(0, 0, 255, 0.1)"
-              }
-            ]
-          },
-          options: {
-            scales: {
-              x: { display: false },
-              y: { title: { display: true, text: "Elevation (m)" } }
-            }
-          }
+          map.fitBounds(geojsonLayer.getBounds());
+
+          // Elevation control
+          const elevationControl = L.control.elevation({
+            theme: "lime-theme",
+            width: 300,
+            height: 150,
+            margins: { top: 10, right: 20, bottom: 30, left: 50 },
+            useHeightIndicator: true,
+            interpolation: "linear",
+            hoverNumber: {
+              decimalsX: 3,
+              decimalsY: 0,
+              formatter: undefined,
+            },
+            xTicks: undefined,
+            yTicks: undefined,
+            collapsed: false,
+          });
+
+          elevationControl.addTo(elevationEl);
+
+          elevationControl.loadGeoJSON(geojson);
+        })
+        .catch((err) => {
+          showError("Failed to load GPX file: " + err.message);
         });
-      }
     }
 
-    fetchAndRenderRoute();
+    function loadGeoJSON(url) {
+      elevationEl.style.display = "none";
+      mapEl.style.display = "block";
+      errorEl.style.display = "none";
+
+      const map = L.map("map").setView([0, 0], 2);
+
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(map);
+
+      fetch(url)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to load GeoJSON file");
+          return res.json();
+        })
+        .then((geojson) => {
+          const geojsonLayer = L.geoJSON(geojson, {
+            style: { color: "#0078d4", weight: 4 },
+          }).addTo(map);
+
+          map.fitBounds(geojsonLayer.getBounds());
+        })
+        .catch((err) => {
+          showError("Failed to load GeoJSON file: " + err.message);
+        });
+    }
   </script>
 </body>
 </html>
