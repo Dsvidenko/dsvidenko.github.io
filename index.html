@@ -15,7 +15,7 @@
       flex-direction: column;
       align-items: center;
       padding: 2rem;
-
+    }
 
     header {
       text-align: center;
@@ -60,9 +60,9 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
- <body>
   <header>
     <h1>Route Evaluation Insights</h1>
     <p>
@@ -74,50 +74,41 @@
     </p>
     <button onclick="connectOneDrive()">Connect to OneDrive</button>
   </header>
-   <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script>
-  const map = L.map('map').setView([47.6062, -122.3321], 10); // Example: Seattle coords
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-</script>
+
+  <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
+
   <footer>
     &copy; 2025 Dan Svidenko. All rights reserved.
   </footer>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle coords
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  </script>
 
-</body>
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-<script>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <script>
     const msalConfig = {
-  auth: {
-    clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-    redirectUri: "https://dsvidenko.github.io/routes.html"
-  }
-};
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: "https://dsvidenko.github.io/routes.html"
+      }
+    };
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-
-  async function connectOneDrive() {
-  document.querySelector("button").textContent = "Connecting...";
-
-  try {
-    // Initiate login
-    msalInstance.loginRedirect({
-    scopes: ["Files.Read.All", "User.Read"],
-    
-  });
-
-   
-  } catch (error) {
-    console.error("Error during OneDrive login:", error);
-  }
-}
-
-
-  
-</script>
-
+    async function connectOneDrive() {
+      document.querySelector("button").textContent = "Connecting...";
+      try {
+        msalInstance.loginRedirect({
+          scopes: ["Files.Read.All", "User.Read"],
+          redirectUri: "https://dsvidenko.github.io/routes.html"
+        });
+      } catch (error) {
+        console.error("Error during OneDrive login:", error);
+      }
+    }
+  </script>
+</body>
 </html>
-
