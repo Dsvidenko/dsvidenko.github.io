@@ -2,126 +2,120 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>View Route</title>
+  <title>Route Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     #map {
-      height: 400px;
+      height: 60%;
     }
-    #elevationChart {
-      width: 100%;
-      height: 300px;
+    #chart-container {
+      height: 40%;
+      padding: 10px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
     }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
-  <h1 style="text-align:center;">Route Viewer</h1>
   <div id="map"></div>
-  <canvas id="elevationChart"></canvas>
+  <div id="chart-container">
+    <canvas id="elevationChart"></canvas>
+  </div>
 
-  <!-- Leaflet -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Chart.js -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/togeojson@0.16.0/togeojson.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- toGeoJSON -->
-  <script src="https://unpkg.com/@tmcw/togeojson"></script>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const fileName = params.get("file");
-
-    if (!fileName) {
-      document.body.innerHTML = "<h2 style='color: red;'>Error: Missing route file.</h2>";
-      throw new Error("Missing route file");
+    function getQueryParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
     }
 
-    const map = L.map('map').setView([47.6, -122.3], 10);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-    }).addTo(map);
+    async function fetchAndRenderRoute() {
+      const route = getQueryParam("route");
+      if (!route) {
+        alert("Missing route id");
+        return;
+      }
 
-    fetch(fileName)
-      .then(res => res.text())
-      .then(async (text) => {
-        let geojson;
-        if (fileName.endsWith(".gpx")) {
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(text, "application/xml");
-          geojson = toGeoJSON.gpx(xml);
-        } else if (fileName.endsWith(".geojson") || fileName.endsWith(".json")) {
-          geojson = JSON.parse(text);
-        } else {
-          throw new Error("Unsupported file type");
-        }
+      const response = await fetch(route);
+      const blob = await response.blob();
 
-        const route = L.geoJSON(geojson).addTo(map);
-        map.fitBounds(route.getBounds());
+      let geojson;
 
-        const elevation = [];
-        const distance = [];
+      if (route.toLowerCase().endsWith(".gpx")) {
+        const text = await blob.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+        geojson = toGeoJSON.gpx(xml);
+      } else if (route.toLowerCase().endsWith(".geojson")) {
+        geojson = await response.json();
+      } else {
+        alert("Unsupported file type.");
+        return;
+      }
 
-        let totalDist = 0;
-        let prevLatLng = null;
+      const map = L.map("map").setView([0, 0], 2);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18
+      }).addTo(map);
 
-        geojson.features.forEach(f => {
-          if (f.geometry.type === "LineString") {
-            f.geometry.coordinates.forEach((coord, i) => {
-              const [lon, lat, ele] = coord;
-              if (typeof ele === "number") elevation.push(ele);
-              if (prevLatLng) {
-                const currLatLng = L.latLng(lat, lon);
-                totalDist += prevLatLng.distanceTo(currLatLng) / 1000;
-              }
-              distance.push(totalDist.toFixed(2));
-              prevLatLng = L.latLng(lat, lon);
-            });
+      const geoLayer = L.geoJSON(geojson);
+      geoLayer.addTo(map);
+      map.fitBounds(geoLayer.getBounds());
+
+      // Extract elevation data
+      const elevationData = [];
+      geojson.features.forEach((feature) => {
+        const coords = feature.geometry.coordinates;
+        coords.forEach(([lon, lat, ele]) => {
+          if (typeof ele === "number") {
+            elevationData.push(ele);
           }
         });
-
-        if (elevation.length > 0) {
-          new Chart(document.getElementById("elevationChart").getContext("2d"), {
-            type: "line",
-            data: {
-              labels: distance,
-              datasets: [{
-                label: "Elevation (m)",
-                data: elevation,
-                borderColor: "blue",
-                backgroundColor: "lightblue",
-                tension: 0.1,
-              }],
-            },
-            options: {
-              responsive: true,
-              scales: {
-                x: {
-                  title: {
-                    display: true,
-                    text: "Distance (km)",
-                  },
-                },
-                y: {
-                  title: {
-                    display: true,
-                    text: "Elevation (m)",
-                  },
-                },
-              },
-            },
-          });
-        } else {
-          document.getElementById("elevationChart").remove();
-        }
-      })
-      .catch(err => {
-        document.body.innerHTML = `<h2 style="color: red;">Error loading route: ${err.message}</h2>`;
-        console.error(err);
       });
+
+      if (elevationData.length > 0) {
+        const ctx = document.getElementById("elevationChart").getContext("2d");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: elevationData.map((_, i) => i),
+            datasets: [
+              {
+                label: "Elevation (m)",
+                data: elevationData,
+                fill: true,
+                borderColor: "blue",
+                backgroundColor: "rgba(0, 0, 255, 0.1)"
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: { display: false },
+              y: { title: { display: true, text: "Elevation (m)" } }
+            }
+          }
+        });
+      }
+    }
+
+    fetchAndRenderRoute();
   </script>
 </body>
 </html>
