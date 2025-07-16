@@ -106,7 +106,7 @@ const msalInstance = new msal.PublicClientApplication(msalConfig);
     // Initiate login
     msalInstance.loginRedirect({
     scopes: ["Files.Read.All", "User.Read"],
-    redirectUri: "https://dsvidenko.github.io/dsvidenko.github.io/routes.html"
+    redirectUri: "https://dsvidenko.github.io/routes.html"
   });
 
     console.log("Logged in as:", loginResponse.account.username);
@@ -141,8 +141,7 @@ const msalInstance = new msal.PublicClientApplication(msalConfig);
 }
 
 
-  // Example call
-  loadRoute("test-route.gpx"); // Replace with your actual file
+  
 </script>
 
 </html>
