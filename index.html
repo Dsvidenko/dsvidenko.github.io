@@ -89,7 +89,9 @@
 
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-    const msalConfig = {
+   
+    async function connectOneDrive() {
+       const msalConfig = {
       auth: {
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
         redirectUri: "https://dsvidenko.github.io/routes.html"
@@ -98,7 +100,6 @@
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    async function connectOneDrive() {
       document.querySelector("button").textContent = "Connecting...";
       try {
         msalInstance.loginRedirect({
