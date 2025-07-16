@@ -1,54 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Route Viewer - Debug</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Route Files - Route Evaluation Insights</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f9f9f9;
+      color: #222;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    #fileList {
+      list-style: none;
+      padding: 0;
+    }
+
+    #fileList li {
+      padding: 0.75rem 1rem;
+      background: white;
+      margin-bottom: 0.5rem;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+    }
+
+    #fileList li button {
+      background: #0078d4;
+      border: none;
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background-color 0.3s ease;
+    }
+
+    #fileList li button:hover {
+      background-color: #005fa3;
+    }
+
+    #loading {
+      text-align: center;
+      font-style: italic;
+      margin-top: 2rem;
+    }
+
+    #error {
+      color: red;
+      text-align: center;
+      margin-top: 2rem;
+    }
+  </style>
 </head>
 <body>
-  <h1>Route Viewer Debug</h1>
-  <div id="log">Initializing...</div>
+  <h1>Your Route Files</h1>
+  <div id="loading">Loading your files...</div>
+  <ul id="fileList" class="hidden"></ul>
+  <div id="error"></div>
 
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-<script>
-  const msalConfig = {
-    auth: {
-      clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-      redirectUri: "https://dsvidenko.github.io/routes.html"
-    }
-  };
+  <script>
+    const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: window.location.origin + '/index.html' // Your login page
+      }
+    };
 
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const fileList = document.getElementById("fileList");
+    const loading = document.getElementById("loading");
+    const errorDiv = document.getElementById("error");
 
-  window.addEventListener("DOMContentLoaded", async () => {
-    try {
-      const result = await msalInstance.handleRedirectPromise();
-      if (result) {
-        msalInstance.setActiveAccount(result.account);
-      } else {
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          msalInstance.setActiveAccount(accounts[0]);
-        } else {
-          document.body.innerHTML = '<h2>Not signed in. Please go back and connect.</h2>';
-          return;
-        }
+    async function getAccessToken() {
+      const account = msalInstance.getActiveAccount();
+      if (!account) {
+        // No user signed in, redirect to login page
+        window.location.href = "/index.html";
+        return null;
       }
 
-      const response = await msalInstance.acquireTokenSilent({
-        scopes: ["Files.Read.All", "User.Read"]
-      });
-
-      // Successfully got token - proceed with app logic
-      console.log("Token acquired:", response.accessToken);
-      document.body.innerHTML = "<h2>Logged in successfully.</h2>";
-
-    } catch (error) {
-      console.error("Error acquiring token silently:", error);
-      document.body.innerHTML = `<h2>Error: ${error.message}</h2><p>Please try logging in again.</p>`;
-      // Don't redirect automatically here — let user retry manually
+      try {
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["Files.Read.All", "User.Read"],
+          account: account
+        });
+        return response.accessToken;
+      } catch (e) {
+        console.warn("Silent token acquisition failed, trying popup", e);
+        try {
+          const response = await msalInstance.acquireTokenPopup({
+            scopes: ["Files.Read.All", "User.Read"],
+          });
+          return response.accessToken;
+        } catch (err) {
+          console.error("Token acquisition failed", err);
+          errorDiv.textContent = "Authentication required. Please log in again.";
+          setTimeout(() => window.location.href = "/index.html", 3000);
+          return null;
+        }
+      }
     }
-  });
-</script>
 
+    async function fetchRouteFiles(token) {
+      loading.textContent = "Fetching your OneDrive route files...";
+
+      // Query OneDrive root or a specific folder (you can customize this)
+      // Example: list files in root
+      const endpoint = "https://graph.microsoft.com/v1.0/me/drive/root/children";
+
+      try {
+        const resp = await fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (!resp.ok) {
+          throw new Error(`Graph API error: ${resp.status} ${resp.statusText}`);
+        }
+        const data = await resp.json();
+
+        // Filter files by extension
+        const relevantFiles = data.value.filter(file => {
+          return file.file && /\.(gpx|geojson)$/i.test(file.name);
+        });
+
+        if (relevantFiles.length === 0) {
+          loading.textContent = "No .gpx or .geojson route files found in your OneDrive.";
+          return;
+        }
+
+        loading.classList.add("hidden");
+        fileList.classList.remove("hidden");
+
+        // Render list
+        relevantFiles.forEach(file => {
+          const li = document.createElement("li");
+          li.textContent = file.name;
+
+          const btn = document.createElement("button");
+          btn.textContent = "View";
+          btn.onclick = () => {
+            // Open file in a new tab (direct download link)
+            window.open(file["@microsoft.graph.downloadUrl"], "_blank");
+          };
+
+          li.appendChild(btn);
+          fileList.appendChild(li);
+        });
+
+      } catch (err) {
+        console.error(err);
+        loading.classList.add("hidden");
+        errorDiv.textContent = "Failed to fetch files: " + err.message;
+      }
+    }
+
+    (async () => {
+      const token = await getAccessToken();
+      if (token) {
+        await fetchRouteFiles(token);
+      }
+    })();
+  </script>
 </body>
 </html>
