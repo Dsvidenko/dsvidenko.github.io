@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Route Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #f4f4f4;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #file-list {
+      margin-top: 1rem;
+    }
+
+    #map {
+      height: 400px;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to Route Viewer</h1>
+  <div id="file-list">Loading files...</div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <script>
+    const msalConfig = {
+      auth: {
+        clientId: "YOUR_CLIENT_ID",
+        redirectUri: window.location.origin + "/routes.html"
+      }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    async function init() {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        document.getElementById("file-list").textContent = "Not signed in.";
+        return;
+      }
+
+      msalInstance.setActiveAccount(accounts[0]);
+
+      try {
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+          scopes: ["Files.Read.All", "User.Read"]
+        });
+
+        const accessToken = tokenResponse.accessToken;
+
+        const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        const data = await res.json();
+        const list = document.getElementById("file-list");
+        list.innerHTML = "<h3>Files:</h3>";
+
+        data.value.forEach(file => {
+          if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
+            const item = document.createElement("div");
+            item.textContent = file.name;
+            list.appendChild(item);
+          }
+        });
+
+      } catch (err) {
+        console.error("Error getting files:", err);
+        document.getElementById("file-list").textContent = "Failed to load files.";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
