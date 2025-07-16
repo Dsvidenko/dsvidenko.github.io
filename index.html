@@ -109,6 +109,18 @@
 
       // Optional global access to login state (for later components)
       window.checkLoginStatus = () => isLoggedIn;
+      // On page load
+    window.addEventListener("DOMContentLoaded", async () => {
+  const result = await msalInstance.handleRedirectPromise();
+  if (result) {
+    console.log("Redirect login result:", result);
+    msalInstance.setActiveAccount(result.account);
+    isLoggedIn = true;
+    connectBtn.textContent = "Access Routes";
+    messageDiv.textContent = "Login successful!";
+  }
+});
+
     })();
   </script>
 </body>
