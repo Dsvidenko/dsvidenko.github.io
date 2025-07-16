@@ -66,7 +66,7 @@
       const msalConfig = {
         auth: {
           clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-          redirectUri: "https://dsvidenko.github.io"
+          redirectUri: window.location.href
         }
       };
 
@@ -77,55 +77,37 @@
       let isLoggedIn = false;
 
       connectBtn.addEventListener("click", async () => {
-  connectBtn.disabled = true;
-  connectBtn.textContent = "Connecting...";
-  messageDiv.textContent = "";
-  messageDiv.style.color = "green";
+        connectBtn.disabled = true;
+        connectBtn.textContent = "Connecting...";
+        messageDiv.textContent = "";
+        messageDiv.style.color = "green";
 
-  try {
-    console.log("Launching loginPopup...");
+        try {
+          const loginResponse = await msalInstance.loginPopup({
+            scopes: ["Files.Read.All", "User.Read"]
+          });
 
-    const loginResponse = await msalInstance.loginPopup({
-      scopes: ["Files.Read.All", "User.Read"]
-    });
+          if (loginResponse && loginResponse.account) {
+            msalInstance.setActiveAccount(loginResponse.account);
+            isLoggedIn = true;
 
-    console.log("MSAL login response:", loginResponse);
+            connectBtn.textContent = "Access Routes";
+            messageDiv.textContent = "Login successful!";
+            console.log("Login success:", loginResponse.account.username);
+          } else {
+            throw new Error("Login returned no usable account.");
+          }
+        } catch (err) {
+          console.error("Login failed:", err);
+          connectBtn.textContent = "Connect to OneDrive";
+          messageDiv.textContent = "Login failed. Check console.";
+          messageDiv.style.color = "red";
+        }
 
-    if (loginResponse && loginResponse.account) {
-      msalInstance.setActiveAccount(loginResponse.account);
-      isLoggedIn = true;
-      connectBtn.textContent = "Access Routes";
-      messageDiv.textContent = "Login successful!";
-      console.log("Login succeeded for:", loginResponse.account);
-    } else {
-      throw new Error("loginPopup succeeded, but no account was returned.");
-    }
+        connectBtn.disabled = false;
+      });
 
-  } catch (error) {
-    console.error("Login failed:", error);
-    connectBtn.textContent = "Connect to OneDrive";
-    messageDiv.textContent = "Login failed. Check console.";
-    messageDiv.style.color = "red";
-  }
-
-  connectBtn.disabled = false;
-});
-
-
-      // Optional global access to login state (for later components)
       window.checkLoginStatus = () => isLoggedIn;
-      // On page load
-    window.addEventListener("DOMContentLoaded", async () => {
-  const result = await msalInstance.handleRedirectPromise();
-  if (result) {
-    console.log("Redirect login result:", result);
-    msalInstance.setActiveAccount(result.account);
-    isLoggedIn = true;
-    connectBtn.textContent = "Access Routes";
-    messageDiv.textContent = "Login successful!";
-  }
-});
-
     })();
   </script>
 </body>
