@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Evaluation Insights - Login</title>
+  <title>Route Evaluation Insights - Welcome</title>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <style>
     body {
@@ -17,6 +17,18 @@
       height: 100vh;
       margin: 0;
       padding: 2rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      max-width: 600px;
     }
 
     button {
@@ -55,7 +67,7 @@
 <body>
   <h1>Route Evaluation Insights</h1>
   <p>
-    Welcome! Click the button below to connect to OneDrive and start exploring routes.
+    Welcome to the Route Evaluation Insights tool. Click the button below to connect your OneDrive account and begin exploring shared routes.
   </p>
   <button onclick="connectOneDrive()">Connect to OneDrive</button>
 </body>
