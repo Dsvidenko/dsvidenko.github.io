@@ -44,56 +44,56 @@
 
   const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-  async function init() {
-    try {
-      const result = await msalInstance.handleRedirectPromise();
+async function init() {
+  try {
+    const result = await msalInstance.handleRedirectPromise();
 
-      if (result !== null) {
-        msalInstance.setActiveAccount(result.account);
+    if (result) {
+      msalInstance.setActiveAccount(result.account);
+      console.log("Login successful via redirect:", result.account.username);
+    } else {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+        console.log("Using cached account:", accounts[0].username);
       } else {
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          msalInstance.setActiveAccount(accounts[0]);
-        }
-      }
-
-      const account = msalInstance.getActiveAccount();
-      if (!account) {
         document.getElementById("file-list").textContent = "Not signed in.";
         return;
       }
-
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        scopes: ["Files.Read.All", "User.Read"]
-      });
-
-      const accessToken = tokenResponse.accessToken;
-
-      const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-
-      const data = await res.json();
-      const list = document.getElementById("file-list");
-      list.innerHTML = "<h3>Files:</h3>";
-
-      data.value.forEach(file => {
-        if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
-          const item = document.createElement("div");
-          item.textContent = file.name;
-          list.appendChild(item);
-        }
-      });
-
-    } catch (err) {
-      console.error("MSAL redirect handling error:", err);
-      document.getElementById("file-list").textContent = "Error handling login.";
     }
-  }
 
-  window.addEventListener("DOMContentLoaded", init);
+    // Now you have an active account
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
+
+    const accessToken = tokenResponse.accessToken;
+
+    // Example fetch call to list OneDrive files
+    const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const data = await res.json();
+    const list = document.getElementById("file-list");
+    list.innerHTML = "<h3>Files:</h3>";
+    data.value.forEach(file => {
+      if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
+        const item = document.createElement("div");
+        item.textContent = file.name;
+        list.appendChild(item);
+      }
+    });
+
+  } catch (error) {
+    console.error("Error handling redirect login:", error);
+    document.getElementById("file-list").textContent = "Error logging in.";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", init);
 </script>
 
 </body>
