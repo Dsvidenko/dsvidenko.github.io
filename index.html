@@ -94,17 +94,14 @@
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
         redirectUri: "https://dsvidenko.github.io/routes.html"};
     const msalInstance = new msal.PublicClientApplication(msalConfig);
-    function connectOneDrive() {
-       document.querySelector("button").textContent = "Connecting...";
-      try {
-        msalInstance.loginRedirect({
-          scopes: ["Files.Read.All", "User.Read"],
-          redirectUri: "https://dsvidenko.github.io/routes.html"
-        });
-      } catch (error) {
-        console.error("Error during OneDrive login:", error);
-      }
-      }
+       function connectOneDrive() {
+  msalInstance.loginRedirect({
+    scopes: ["Files.Read.All", "User.Read"],
+    redirectUri: "https://dsvidenko.github.io/routes.html"
+  });
+}
+
+      
     
 
     
