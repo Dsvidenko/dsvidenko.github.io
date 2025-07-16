@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>View Route</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- toGeoJSON -->
+  <script src="https://unpkg.com/togeojson@0.16.0/dist/togeojson.umd.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1rem; }
+    #map { height: 400px; margin-bottom: 2rem; border: 1px solid #ccc; }
+    canvas { width: 100%; max-width: 800px; margin: auto; display: block; }
+  </style>
+</head>
+<body>
+  <h1 id="routeTitle">Loading Route...</h1>
+  <div id="map"></div>
+  <canvas id="elevationChart"></canvas>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get('name');
+    const id = params.get('id');
+    document.getElementById('routeTitle').textContent = name || "Unnamed Route";
+
+    const map = L.map('map').setView([0, 0], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    async function loadAndDisplayGPX() {
+      if (!id) return alert("Missing route ID.");
+      const url = `https://onedrive.live.com/download?resid=${id}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const gpxText = await response.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(gpxText, 'application/xml');
+        const geojson = toGeoJSON.gpx(xml);
+
+        const routeLayer = L.geoJSON(geojson, {
+          style: { color: 'blue', weight: 3 }
+        }).addTo(map);
+        map.fitBounds(routeLayer.getBounds());
+
+        const elevationPoints = geojson.features.flatMap(f =>
+          f.geometry.coordinates.map(c => ({ ele: c[2] || 0 }))
+        );
+
+        const elevationData = elevationPoints.map(p => p.ele);
+        const distanceLabels = elevationPoints.map((_, i) => `${(i * 0.1).toFixed(1)} km`);
+
+        const ctx = document.getElementById('elevationChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: distanceLabels,
+            datasets: [{
+              label: 'Elevation (m)',
+              data: elevationData,
+              borderColor: 'green',
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: { title: { display: true, text: 'Distance (approx km)' }},
+              y: { title: { display: true, text: 'Elevation (m)' }}
+            }
+          }
+        });
+      } catch (error) {
+        console.error(error);
+        alert("Failed to load or parse the GPX file.");
+      }
+    }
+
+    loadAndDisplayGPX();
+  </script>
+</body>
+</html>
