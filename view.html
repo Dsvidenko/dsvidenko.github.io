@@ -17,6 +17,14 @@
       height: 100vh;
       color: #222;
     }
+    #filename {
+      padding: 1rem;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-align: center;
+      background: #0078d4;
+      color: white;
+    }
     #content {
       display: flex;
       flex-grow: 1;
@@ -45,7 +53,7 @@
   </style>
 </head>
 <body>
-  <h1 style="text-align:center; margin: 1rem 0;">Route Viewer</h1>
+  <div id="filename">Loading route...</div>
   <div id="content">
     <div id="map"></div>
     <div id="elevation"></div>
@@ -76,10 +84,14 @@
     const errorEl = document.getElementById("error");
     const mapEl = document.getElementById("map");
     const elevationEl = document.getElementById("elevation");
+    const filenameEl = document.getElementById("filename");
 
     if (!routeUrl) {
       showError("Missing route URL.");
+      filenameEl.textContent = "";
     } else {
+      filenameEl.textContent = decodeURIComponent(fileName) || "Unknown file";
+
       const lowerName = fileName.toLowerCase();
 
       if (lowerName.endsWith(".gpx")) {
@@ -88,6 +100,7 @@
         loadGeoJSON(routeUrl);
       } else {
         showError(`Unsupported file type: ${fileName}`);
+        filenameEl.textContent = "";
       }
     }
 
@@ -136,10 +149,7 @@
             hoverNumber: {
               decimalsX: 3,
               decimalsY: 0,
-              formatter: undefined,
             },
-            xTicks: undefined,
-            yTicks: undefined,
             collapsed: false,
           });
 
@@ -149,6 +159,7 @@
         })
         .catch((err) => {
           showError("Failed to load GPX file: " + err.message);
+          filenameEl.textContent = "";
         });
     }
 
@@ -177,6 +188,7 @@
         })
         .catch((err) => {
           showError("Failed to load GeoJSON file: " + err.message);
+          filenameEl.textContent = "";
         });
     }
   </script>
