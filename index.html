@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Evaluation Insights - Login</title>
+  <title>Route Evaluation Insights</title>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <style>
     body {
@@ -14,7 +14,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
       padding: 2rem;
       text-align: center;
@@ -50,65 +50,46 @@
     #message {
       margin-top: 1.5rem;
       font-size: 1.1rem;
-      color: green;
       min-height: 1.2em;
+    }
+
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>Route Evaluation Insights</h1>
-  <p>Connect your OneDrive account to access and evaluate route data.</p>
-  <button id="connectBtn">Connect to OneDrive</button>
-  <div id="message"></div>
+  <!-- PRE-LOGIN SECTION -->
+  <div id="loginView">
+    <h1>Route Evaluation Insights</h1>
+    <p>Connect your OneDrive account to browse and evaluate route data.</p>
+    <button id="connectBtn">Connect to OneDrive</button>
+    <div id="loginMessage"></div>
+  </div>
+
+  <!-- POST-LOGIN SECTION -->
+  <div id="appView" class="hidden">
+    <h1>Welcome back!</h1>
+    <p>You are now signed in and can begin evaluating your routes.</p>
+    <button onclick="window.location.href='routes.html'">Access Routes</button>
+    <div id="userInfo" style="margin-top: 1rem; font-size: 1rem; color: #444;"></div>
+  </div>
 
   <script>
-    (function () {
-      const msalConfig = {
-        auth: {
-          clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-          redirectUri: window.location.href
-        }
-      };
+    const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: window.location.href
+      }
+    };
 
-      const msalInstance = new msal.PublicClientApplication(msalConfig);
-      const connectBtn = document.getElementById("connectBtn");
-      const messageDiv = document.getElementById("message");
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const loginView = document.getElementById("loginView");
+    const appView = document.getElementById("appView");
+    const connectBtn = document.getElementById("connectBtn");
+    const loginMessage = document.getElementById("loginMessage");
+    const userInfo = document.getElementById("userInfo");
 
-      let isLoggedIn = false;
-
-      connectBtn.addEventListener("click", async () => {
-        connectBtn.disabled = true;
-        connectBtn.textContent = "Connecting...";
-        messageDiv.textContent = "";
-        messageDiv.style.color = "green";
-
-        try {
-          const loginResponse = await msalInstance.loginPopup({
-            scopes: ["Files.Read.All", "User.Read"]
-          });
-
-          if (loginResponse && loginResponse.account) {
-            msalInstance.setActiveAccount(loginResponse.account);
-            isLoggedIn = true;
-
-            connectBtn.textContent = "Access Routes";
-            messageDiv.textContent = "Login successful!";
-            console.log("Login success:", loginResponse.account.username);
-          } else {
-            throw new Error("Login returned no usable account.");
-          }
-        } catch (err) {
-          console.error("Login failed:", err);
-          connectBtn.textContent = "Connect to OneDrive";
-          messageDiv.textContent = "Login failed. Check console.";
-          messageDiv.style.color = "red";
-        }
-
-        connectBtn.disabled = false;
-      });
-
-      window.checkLoginStatus = () => isLoggedIn;
-    })();
-  </script>
-</body>
-</html>
+    function showAppView(account) {
+      loginView.classList.add("hidden");
+      appView.classList.remov
