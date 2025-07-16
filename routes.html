@@ -3,69 +3,130 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Files - Route Evaluation Insights</title>
+  <title>Route Viewer - Route Evaluation Insights</title>
+
+  <!-- MSAL for auth -->
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
+  <!-- Leaflet for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js for elevation graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- to parse GPX files -->
+  <script src="https://cdn.jsdelivr.net/npm/togeojson@0.16.0/dist/togeojson.min.js"></script>
+
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f9f9f9;
       color: #222;
-      padding: 2rem;
-      max-width: 800px;
-      margin: auto;
+      margin: 0;
+      padding: 1rem;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
     }
-    h1 { text-align: center; }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
     #fileList {
       list-style: none;
       padding: 0;
-    }
-    #fileList li {
-      background: white;
-      margin-bottom: 0.5rem;
-      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
       border-radius: 6px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      background: white;
+    }
+
+    #fileList li {
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #eee;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    #fileList li button {
+
+    #fileList li:last-child {
+      border-bottom: none;
+    }
+
+    #fileList button {
       background: #0078d4;
       color: white;
       border: none;
-      padding: 0.4rem 0.8rem;
+      padding: 0.3rem 0.7rem;
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.9rem;
       transition: background-color 0.3s ease;
     }
-    #fileList li button:hover {
+
+    #fileList button:hover {
       background-color: #005fa3;
     }
-    #loading, #error, #debug {
+
+    #viewer {
+      display: flex;
+      flex: 1;
+      gap: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+      padding: 1rem;
+      min-height: 400px;
+    }
+
+    #map {
+      flex: 2;
+      height: 100%;
+      border-radius: 6px;
+    }
+
+    #elevationChartContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 1rem;
+    }
+
+    #elevationChart {
+      width: 100%;
+      height: 300px;
+    }
+
+    #loading, #error {
       text-align: center;
       margin-top: 1rem;
-    }
-    #error { color: red; }
-    #debug {
-      font-size: 0.8rem;
-      color: gray;
-      white-space: pre-wrap;
-      text-align: left;
-      background: #eee;
-      padding: 1rem;
-      border-radius: 6px;
-      max-height: 200px;
-      overflow-y: auto;
+      font-style: italic;
+      color: #555;
     }
   </style>
 </head>
 <body>
   <h1>Your Route Files</h1>
-  <div id="loading">Loading...</div>
+  <div id="loading">Loading files...</div>
   <ul id="fileList" class="hidden"></ul>
   <div id="error"></div>
-  <div id="debug"></div>
+
+  <div id="viewer" class="hidden">
+    <div id="map"></div>
+    <div id="elevationChartContainer">
+      <canvas id="elevationChart"></canvas>
+    </div>
+  </div>
 
 <script>
   const msalConfig = {
@@ -74,17 +135,13 @@
       redirectUri: window.location.origin + '/index.html'
     }
   };
-
   const msalInstance = new msal.PublicClientApplication(msalConfig);
-  const loading = document.getElementById("loading");
-  const errorDiv = document.getElementById("error");
-  const debugDiv = document.getElementById("debug");
-  const fileList = document.getElementById("fileList");
+  const loading = document.getElementById('loading');
+  const errorDiv = document.getElementById('error');
+  const fileList = document.getElementById('fileList');
+  const viewer = document.getElementById('viewer');
 
-  function logDebug(msg) {
-    console.log(msg);
-    debugDiv.textContent += msg + "\n";
-  }
+  let map, routeLayer, elevationChart;
 
   async function getToken() {
     const accounts = msalInstance.getAllAccounts();
@@ -101,19 +158,15 @@
         scopes: ["Files.Read.All", "User.Read"],
         account: account
       });
-      logDebug("Token acquired silently.");
       return response.accessToken;
     } catch (e) {
-      logDebug("Silent token acquisition failed: " + e);
       try {
         const response = await msalInstance.acquireTokenPopup({
           scopes: ["Files.Read.All", "User.Read"]
         });
-        logDebug("Token acquired via popup.");
         return response.accessToken;
       } catch (err) {
         errorDiv.textContent = "Failed to acquire token. Please login again.";
-        logDebug("Popup token acquisition failed: " + err);
         setTimeout(() => window.location.href = "/index.html", 3000);
         return null;
       }
@@ -132,7 +185,6 @@
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 
       const data = await res.json();
-      logDebug("Graph API response received.");
 
       const relevantFiles = data.value.filter(f => f.file && /\.(gpx|geojson)$/i.test(f.name));
       if (relevantFiles.length === 0) {
@@ -140,36 +192,157 @@
         return;
       }
 
-      loading.classList.add("hidden");
-      fileList.classList.remove("hidden");
+      loading.classList.add('hidden');
+      fileList.classList.remove('hidden');
 
       relevantFiles.forEach(file => {
-        const li = document.createElement("li");
+        const li = document.createElement('li');
         li.textContent = file.name;
 
-        const btn = document.createElement("button");
+        const btn = document.createElement('button');
         btn.textContent = "View";
-        btn.onclick = () => window.open(file["@microsoft.graph.downloadUrl"], "_blank");
+        btn.onclick = () => loadRoute(file);
 
         li.appendChild(btn);
         fileList.appendChild(li);
       });
+    } catch (err) {
+      loading.classList.add('hidden');
+      errorDiv.textContent = "Failed to fetch files: " + err.message;
+    }
+  }
+
+  async function loadRoute(file) {
+    errorDiv.textContent = "";
+    viewer.classList.remove('hidden');
+
+    if (!map) {
+      map = L.map('map').setView([47.6062, -122.3321], 10);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+    }
+
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+    }
+
+    loading.textContent = "Loading route: " + file.name;
+    loading.classList.remove('hidden');
+
+    try {
+      const fileData = await fetch(file["@microsoft.graph.downloadUrl"]).then(res => res.text());
+
+      let geojson;
+
+      if (file.name.toLowerCase().endsWith('.gpx')) {
+        // Parse GPX to GeoJSON using togeojson library
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(fileData, "application/xml");
+        geojson = toGeoJSON.gpx(xmlDoc);
+      } else if (file.name.toLowerCase().endsWith('.geojson')) {
+        geojson = JSON.parse(fileData);
+      } else {
+        throw new Error("Unsupported file format");
+      }
+
+      if (!geojson.features || geojson.features.length === 0) {
+        throw new Error("No features found in the route data");
+      }
+
+      // Add route layer to map
+      routeLayer = L.geoJSON(geojson, {
+        style: { color: "#0078d4", weight: 4 }
+      }).addTo(map);
+
+      map.fitBounds(routeLayer.getBounds());
+
+      loading.classList.add('hidden');
+
+      // Extract elevation data for chart
+      // We try to find elevation from each coordinate set in the route geometry
+      const elevations = [];
+
+      geojson.features.forEach(feature => {
+        if (feature.geometry.type === "LineString") {
+          feature.geometry.coordinates.forEach(coord => {
+            // coord format: [lon, lat, elevation?]
+            if (coord.length >= 3) {
+              elevations.push(coord[2]);
+            }
+          });
+        }
+        // For MultiLineString, flatten:
+        else if (feature.geometry.type === "MultiLineString") {
+          feature.geometry.coordinates.forEach(line => {
+            line.forEach(coord => {
+              if (coord.length >= 3) elevations.push(coord[2]);
+            });
+          });
+        }
+      });
+
+      if (elevations.length === 0) {
+        errorDiv.textContent = "No elevation data found in this route.";
+        if (elevationChart) {
+          elevationChart.destroy();
+          elevationChart = null;
+        }
+        return;
+      }
+
+      renderElevationChart(elevations);
 
     } catch (err) {
-      errorDiv.textContent = "Error fetching files: " + err.message;
-      logDebug("Fetch error: " + err.message);
-      loading.classList.add("hidden");
+      loading.classList.add('hidden');
+      errorDiv.textContent = "Error loading route: " + err.message;
     }
+  }
+
+  function renderElevationChart(elevations) {
+    const ctx = document.getElementById('elevationChart').getContext('2d');
+
+    if (elevationChart) {
+      elevationChart.destroy();
+    }
+
+    elevationChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: elevations.map((_, i) => i + 1),
+        datasets: [{
+          label: 'Elevation (meters)',
+          data: elevations,
+          fill: true,
+          borderColor: '#0078d4',
+          backgroundColor: 'rgba(0, 120, 212, 0.3)',
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Point Index' } },
+          y: { display: true, title: { display: true, text: 'Elevation (m)' } }
+        },
+        plugins: {
+          legend: { display: true },
+          tooltip: { enabled: true }
+        }
+      }
+    });
   }
 
   (async () => {
     const token = await getToken();
     if (token) {
       await fetchFiles(token);
-    } else {
-      loading.textContent = "Redirecting to login...";
     }
   })();
+
 </script>
 </body>
 </html>
