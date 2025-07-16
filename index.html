@@ -117,21 +117,46 @@ async function connectOneDrive() {
   }
 }
 
-  async function loadRoute(file) {
-    const res = await fetch(file);
-    const text = await res.text();
+  async function connectOneDrive() {
+  document.querySelector("button").textContent = "Connecting...";
 
-    if (file.endsWith(".gpx")) {
-      console.log("GPX loaded:", file);
-      // TODO: GPX parse logic here
-    } else if (file.endsWith(".geojson")) {
-      const data = await res.json();
-      console.log("GeoJSON loaded:", data);
-      // TODO: render on map
-    } else {
-      console.warn("Unsupported file type:", file);
-    }
+  try {
+    // Initiate login
+    const loginResponse = await msalInstance.loginPopup({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
+
+    console.log("Logged in as:", loginResponse.account.username);
+
+    // Set account for token acquisition
+    msalInstance.setActiveAccount(loginResponse.account);
+
+    // Get access token
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
+
+    const accessToken = tokenResponse.accessToken;
+    console.log("Access token acquired:", accessToken);
+
+    // Test Microsoft Graph API call: get user's OneDrive root
+    const response = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const data = await response.json();
+    console.log("OneDrive Files:", data);
+
+    // Show results on page (optional)
+    alert("Success! Files fetched. Check console for results.");
+
+  } catch (error) {
+    console.error("Error during OneDrive login:", error);
   }
+}
+
 
   // Example call
   loadRoute("test-route.gpx"); // Replace with your actual file
