@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Evaluation Insights - Welcome</title>
+  <title>Route Evaluation Insights - Login</title>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <style>
     body {
@@ -40,35 +40,75 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      min-width: 180px;
     }
 
     button:hover {
       background-color: #005fa3;
     }
-  </style>
-  <script>
-    const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/routes.html"
-      }
-    };
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-    function connectOneDrive() {
-      console.log("Connect button clicked");
-      msalInstance.loginRedirect({
-        scopes: ["Files.Read.All", "User.Read"]
-      });
+    #message {
+      margin-top: 1.5rem;
+      font-size: 1.1rem;
+      color: green;
+      min-height: 1.2em;
     }
-  </script>
+  </style>
 </head>
 <body>
   <h1>Route Evaluation Insights</h1>
   <p>
-    Welcome to the Route Evaluation Insights tool. Click the button below to connect your OneDrive account and begin exploring shared routes.
+    Welcome to the Route Evaluation Insights tool. Click below to connect your OneDrive account and begin exploring shared routes.
   </p>
-  <button onclick="connectOneDrive()">Connect to OneDrive</button>
+  <button id="connectBtn">Connect to OneDrive</button>
+  <div id="message"></div>
+
+  <script>
+    (function() {
+      const msalConfig = {
+        auth: {
+          clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+          redirectUri: window.location.origin + window.location.pathname
+        }
+      };
+
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+      const connectBtn = document.getElementById("connectBtn");
+      const messageDiv = document.getElementById("message");
+
+      // Protected variable to track login state
+      let isLoggedIn = false;
+
+      async function connectOneDrive() {
+        try {
+          const loginResponse = await msalInstance.loginPopup({
+            scopes: ["Files.Read.All", "User.Read"]
+          });
+
+          msalInstance.setActiveAccount(loginResponse.account);
+          isLoggedIn = true;  // update protected login state
+          connectBtn.textContent = "Access Routes";
+          messageDiv.textContent = "Login successful!";
+          messageDiv.style.color = "green";
+
+          // You can now check isLoggedIn internally to gate features
+          console.log("User is logged in:", isLoggedIn);
+
+        } catch (error) {
+          console.error("Login failed:", error);
+          messageDiv.textContent = "Login failed, please try again.";
+          messageDiv.style.color = "red";
+          isLoggedIn = false;
+        }
+      }
+
+      connectBtn.addEventListener("click", connectOneDrive);
+
+      // Expose a safe method to check login status within this scope
+      window.checkLoginStatus = function() {
+        return isLoggedIn;
+      };
+    })();
+  </script>
 </body>
 </html>
