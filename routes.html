@@ -2,77 +2,62 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Routes</title>
+  <title>Routes List</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f9f9f9;
+      font-family: Arial, sans-serif;
       padding: 2rem;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 2rem;
+    ul {
+      list-style-type: none;
+      padding: 0;
     }
-    .route-list {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .route-item {
-      background: white;
-      padding: 1rem;
+    li {
       margin-bottom: 1rem;
-      border-radius: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    .route-name {
-      font-weight: bold;
-    }
-    .view-link {
-      background: #0078D4;
+    button {
+      margin-left: 1rem;
+      padding: 0.4rem 0.8rem;
+      background-color: #0078d4;
       color: white;
-      padding: 0.5rem 1rem;
       border: none;
       border-radius: 4px;
-      text-decoration: none;
-      font-size: 0.9rem;
+      cursor: pointer;
     }
-    .view-link:hover {
-      background: #005A9E;
+    button:hover {
+      background-color: #005fa3;
     }
   </style>
 </head>
 <body>
   <h1>Available Routes</h1>
-  <div class="route-list" id="routesList"></div>
+  <ul id="routesList"></ul>
 
   <script>
-    const sampleFiles = [
-      { name: "mountain-trail.gpx", type: "gpx" },
-      { name: "river-path.geojson", type: "geojson" },
-      { name: "forest-walk.gpx", type: "gpx" }
+    // MOCK: Replace with your actual list from OneDrive API
+    const files = [
+      { id: "123", name: "route1.gpx", downloadUrl: "routes/route1.gpx" },
+      { id: "456", name: "route2.geojson", downloadUrl: "routes/route2.geojson" },
+      // ...
     ];
 
-    const routesList = document.getElementById("routesList");
+    const listEl = document.getElementById("routesList");
 
-    sampleFiles.forEach(file => {
-      const container = document.createElement("div");
-      container.className = "route-item";
+    files.forEach(file => {
+      // Use downloadUrl or file name in query parameter (must be accessible from view.html)
+      const routeParam = encodeURIComponent(file.downloadUrl || file.name);
 
-      const name = document.createElement("div");
-      name.className = "route-name";
-      name.textContent = file.name;
+      const li = document.createElement("li");
+      li.textContent = file.name;
 
-      const link = document.createElement("a");
-      link.href = `view.html?file=${encodeURIComponent(file.name)}`;
-      link.className = "view-link";
-      link.textContent = "View";
+      const viewBtn = document.createElement("button");
+      viewBtn.textContent = "View";
+      viewBtn.onclick = () => {
+        window.location.href = `view.html?route=${routeParam}`;
+      };
 
-      container.appendChild(name);
-      container.appendChild(link);
-      routesList.appendChild(container);
+      li.appendChild(viewBtn);
+      listEl.appendChild(li);
     });
   </script>
 </body>
