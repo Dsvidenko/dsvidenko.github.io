@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Authenticating...</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f9f9;
+      color: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    p {
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <p>Finishing sign-in...</p>
+  <script>
+    const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: window.location.href
+      }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    msalInstance.handleRedirectPromise()
+      .then(() => {
+        window.close(); // Close the popup window after auth completes
+      })
+      .catch((error) => {
+        console.error("Error handling redirect:", error);
+        window.close(); // Close anyway on failure
+      });
+  </script>
+</body>
+</html>
