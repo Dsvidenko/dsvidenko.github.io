@@ -200,8 +200,10 @@
         li.textContent = file.name;
 
         const btn = document.createElement('button');
+        btn.type = 'button'; // <- ADD THIS LINE to prevent submit behavior
         btn.textContent = "View";
         btn.onclick = () => loadRoute(file);
+
 
         li.appendChild(btn);
         fileList.appendChild(li);
