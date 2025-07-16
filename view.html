@@ -49,6 +49,7 @@
       font-weight: bold;
       text-align: center;
       margin: auto;
+      display: none;
     }
   </style>
 </head>
@@ -58,14 +59,10 @@
     <div id="map"></div>
     <div id="elevation"></div>
   </div>
-  <div id="error" style="display:none;"></div>
+  <div id="error"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- GPX parser -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
-
-  <!-- Leaflet Elevation (for GPX) -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet-elevation/dist/leaflet-elevation.min.css"
@@ -73,7 +70,7 @@
   <script src="https://unpkg.com/leaflet-elevation/dist/leaflet-elevation.min.js"></script>
 
   <script>
-    // Helper to get query param
+    // Get query params
     function getQueryParam(name) {
       return new URLSearchParams(window.location.search).get(name);
     }
