@@ -1,44 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-  
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" href="favicon.ico?v=2" />
-  <title>Route Evaluation Insights</title>  
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Route Evaluation Insights - Login</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
       background: #f9f9f9;
       color: #222;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
       padding: 2rem;
-    }
-
-    header {
-      text-align: center;
-      max-width: 800px;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    p {
-      font-size: 1.1rem;
-      line-height: 1.6;
-      margin-bottom: 1rem;
     }
 
     button {
       background-color: #0078d4;
       color: white;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -48,62 +33,30 @@
     button:hover {
       background-color: #005fa3;
     }
-
-    footer {
-      margin-top: 4rem;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 2rem;
-      }
-    }
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-</head>
-<body>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([47.6062, -122.3321], 10); // Seattle coords
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  </script>
-
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-  <script>
-   const msalConfig = {
+    const msalConfig = {
       auth: {
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/routes.html"};
+        redirectUri: "https://dsvidenko.github.io/routes.html"
+      }
+    };
+
     const msalInstance = new msal.PublicClientApplication(msalConfig);
-    
-  function connectOneDrive() {
-    console.log("pressed button")
-    msalInstance.loginRedirect({
-      scopes: ["Files.Read.All", "User.Read"],
-      redirectUri: "https://dsvidenko.github.io/routes.html"
-  });
-  }
+
+    function connectOneDrive() {
+      console.log("Connect button clicked");
+      msalInstance.loginRedirect({
+        scopes: ["Files.Read.All", "User.Read"]
+      });
+    }
   </script>
-  <header>
-    <h1>Route Evaluation Insights</h1>
-    <p>
-      Welcome to the Route Evaluation Insights tool. This app lets you browse, tag, and compare hiking or biking routes
-      from shared OneDrive folders. Built by <strong>Dan Svidenko</strong> and sponsored by <strong>Vicky Svidenko</strong>.
-    </p>
-    <p>
-      Start by connecting to OneDrive to view shared routes and begin analysis.
-    </p>
-    <button onclick="connectOneDrive()">Connect to OneDrive</button>
-  </header>
-
-  <div id="map" style="height: 400px; width: 100%; margin-top: 2rem;"></div>
-
-  <footer>
-    &copy; 2025 Dan Svidenko. All rights reserved.
-  </footer>
-
-  
+</head>
+<body>
+  <h1>Route Evaluation Insights</h1>
+  <p>
+    Welcome! Click the button below to connect to OneDrive and start exploring routes.
+  </p>
+  <button onclick="connectOneDrive()">Connect to OneDrive</button>
 </body>
 </html>
