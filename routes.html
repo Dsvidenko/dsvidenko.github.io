@@ -4,53 +4,68 @@
   <meta charset="UTF-8" />
   <title>Routes</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 8px 12px; border: 1px solid #ccc; text-align: left; }
-    button { padding: 6px 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #fff;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      background-color: #0078D4;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005A9E;
+    }
   </style>
 </head>
 <body>
-  <h1>Your Routes</h1>
-  <table id="routesTable">
-    <thead>
-      <tr><th>File Name</th><th>Actions</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h1>Available Routes</h1>
+  <ul id="routesList"></ul>
 
   <script>
-    const fileList = JSON.parse(localStorage.getItem('routes') || '[]'); // stored after login
+    const sampleFiles = [
+      { name: "mountain-trail.gpx", type: "gpx" },
+      { name: "river-path.geojson", type: "geojson" },
+      { name: "forest-walk.gpx", type: "gpx" }
+    ];
 
-    function renderRoutes() {
-      const tbody = document.querySelector('#routesTable tbody');
-      tbody.innerHTML = '';
-      fileList.forEach(file => {
-        const tr = document.createElement('tr');
+    const routesList = document.getElementById("routesList");
 
-        const tdName = document.createElement('td');
-        tdName.textContent = file.name;
+    sampleFiles.forEach(file => {
+      const li = document.createElement("li");
+      li.textContent = file.name;
 
-        const tdActions = document.createElement('td');
-        const viewBtn = document.createElement('button');
-        viewBtn.textContent = 'View';
-        viewBtn.onclick = () => {
-          // Pass name and id as query params to view.html
-          const query = new URLSearchParams({
-            name: file.name,
-            id: file.id
-          });
-          window.location.href = `view.html?${query.toString()}`;
-        };
+      const viewBtn = document.createElement("button");
+      viewBtn.textContent = "View";
+      viewBtn.onclick = () => {
+        // Encode file name to pass it via URL
+        const encodedName = encodeURIComponent(file.name);
+        window.location.href = `view.html?file=${encodedName}`;
+      };
 
-        tdActions.appendChild(viewBtn);
-        tr.appendChild(tdName);
-        tr.appendChild(tdActions);
-        tbody.appendChild(tr);
-      });
-    }
-
-    renderRoutes();
+      li.appendChild(viewBtn);
+      routesList.appendChild(li);
+    });
   </script>
 </body>
 </html>
