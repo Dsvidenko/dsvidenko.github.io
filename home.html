@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Route Evaluation Insights</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background: #f9f9f9;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      max-width: 800px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      background-color: #0078d4;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    footer {
+      margin-top: 4rem;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Route Evaluation Insights</h1>
+    <p>
+      Welcome to the Route Evaluation Insights tool. This app lets you browse, tag, and compare hiking or biking routes
+      from shared OneDrive folders. Built by <strong>Dan Svidenko</strong> and sponsored by <strong>Vicky Svidenko</strong>.
+    </p>
+    <p>
+      Start by connecting to OneDrive to view shared routes and begin analysis.
+    </p>
+    <button onclick="connectOneDrive()">Connect to OneDrive</button>
+  </header>
+
+  <footer>
+    &copy; 2025 Dan Svidenko. All rights reserved.
+  </footer>
+
+  <script>
+    function connectOneDrive() {
+      alert("OAuth2 login will go here.\n(To be implemented with MSAL.js or Python backend redirect.)");
+      // Future: Redirect to Microsoft login or start PKCE flow
+    }
+  </script>
+</body>
+</html>
