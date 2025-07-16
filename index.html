@@ -47,10 +47,10 @@
       background-color: #005fa3;
     }
 
-    #message {
-      margin-top: 1.5rem;
+    #loginMessage {
+      margin-top: 1rem;
       font-size: 1.1rem;
-      min-height: 1.2em;
+      color: red;
     }
 
     .hidden {
@@ -59,7 +59,7 @@
   </style>
 </head>
 <body>
-  <!-- PRE-LOGIN SECTION -->
+  <!-- PRE-LOGIN VIEW -->
   <div id="loginView">
     <h1>Route Evaluation Insights</h1>
     <p>Connect your OneDrive account to browse and evaluate route data.</p>
@@ -67,7 +67,7 @@
     <div id="loginMessage"></div>
   </div>
 
-  <!-- POST-LOGIN SECTION -->
+  <!-- POST-LOGIN VIEW -->
   <div id="appView" class="hidden">
     <h1>Welcome back!</h1>
     <p>You are now signed in and can begin evaluating your routes.</p>
@@ -79,8 +79,7 @@
     const msalConfig = {
       auth: {
         clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: "https://dsvidenko.github.io/auth.html"
-
+        redirectUri: window.location.origin + window.location.pathname
       }
     };
 
@@ -91,7 +90,7 @@
     const userInfo = document.getElementById("userInfo");
     const loginMessage = document.getElementById("loginMessage");
 
-    function showAppView(account) {
+    function showApp(account) {
       loginView.classList.add("hidden");
       appView.classList.remove("hidden");
       userInfo.textContent = `Signed in as ${account.username}`;
@@ -107,30 +106,27 @@
           scopes: ["Files.Read.All", "User.Read"]
         });
 
-        if (response && response.account) {
+        if (response.account) {
           msalInstance.setActiveAccount(response.account);
-          showAppView(response.account);
+          showApp(response.account);
         } else {
-          loginMessage.textContent = "No account returned. Try again.";
-          loginMessage.style.color = "red";
+          loginMessage.textContent = "Login failed: No account returned.";
         }
-
       } catch (err) {
-        console.error("Popup login failed:", err);
-        loginMessage.textContent = "Login failed. See console.";
-        loginMessage.style.color = "red";
+        console.error("Login error:", err);
+        loginMessage.textContent = err.errorMessage || "Login was canceled or failed.";
+      } finally {
+        connectBtn.disabled = false;
+        connectBtn.textContent = "Connect to OneDrive";
       }
-
-      connectBtn.disabled = false;
-      connectBtn.textContent = "Connect to OneDrive";
     });
 
-    // Auto-check for existing session
+    // Check for existing session
     window.addEventListener("DOMContentLoaded", () => {
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
         msalInstance.setActiveAccount(accounts[0]);
-        showAppView(accounts[0]);
+        showApp(accounts[0]);
       }
     });
   </script>
