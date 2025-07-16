@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Route Viewer</title>
 </head>
 <body>
-  <h1>Welcome to Route Viewer</h1>
-  <div id="file-list">Loading OneDrive files...</div>
+  <h1>Route Viewer</h1>
+  <div id="status">Loading...</div>
 
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
@@ -19,42 +19,38 @@
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    async function init() {
+    window.addEventListener("DOMContentLoaded", async () => {
+      console.log("MSAL loaded");
+      document.getElementById("status").textContent = "Starting redirect handler...";
+
       try {
         const result = await msalInstance.handleRedirectPromise();
+        console.log("Redirect result:", result);
 
         if (result) {
-          console.log("Redirect login complete:", result);
           msalInstance.setActiveAccount(result.account);
-        } else {
-          console.log("No redirect result. Checking cached accounts...");
-          const accounts = msalInstance.getAllAccounts();
-          if (accounts.length > 0) {
-            msalInstance.setActiveAccount(accounts[0]);
-          } else {
-            document.getElementById("file-list").textContent = "Not signed in.";
-            return;
-          }
         }
 
-        // Now you're signed in — get token
+        const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+        if (!account) {
+          document.getElementById("status").textContent = "No signed in account.";
+          return;
+        }
+
+        msalInstance.setActiveAccount(account);
         const response = await msalInstance.acquireTokenSilent({
           scopes: ["Files.Read.All", "User.Read"]
         });
 
-        const accessToken = response.accessToken;
-        console.log("Access token:", accessToken);
-
-        // Optional: Show success
-        document.getElementById("file-list").textContent = "Logged in successfully.";
+        const token = response.accessToken;
+        document.getElementById("status").textContent = "Logged in successfully.";
+        console.log("Access Token:", token);
 
       } catch (err) {
-        console.error("Error during redirect handling:", err);
-        document.getElementById("file-list").textContent = "Error logging in.";
+        console.error("Redirect/login error:", err);
+        document.getElementById("status").textContent = "Error logging in.";
       }
-    }
-
-    window.addEventListener("DOMContentLoaded", init);
+    });
   </script>
 </body>
 </html>
