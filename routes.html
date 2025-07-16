@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Available Routes - Route Evaluation Insights</title>
+  <title>Routes - Route Evaluation Insights</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -11,6 +11,9 @@
       padding: 2rem;
       max-width: 700px;
       margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     h1 {
@@ -22,10 +25,17 @@
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
     }
 
+    #statusMessage {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: #555;
+    }
+
     ul {
       list-style: none;
       padding: 0;
       margin: 0;
+      flex-grow: 1;
     }
 
     li {
@@ -76,42 +86,107 @@
   </style>
 </head>
 <body>
-  <h1>Available Routes</h1>
+  <h1>Your OneDrive Routes</h1>
+  <div id="statusMessage">Loading your routes...</div>
   <ul id="routesList"></ul>
 
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const files = [
-        { id: "123", name: "route1.gpx", downloadUrl: "routes/route1.gpx" },
-        { id: "456", name: "route2.geojson", downloadUrl: "routes/route2.geojson" },
-      ];
+    const msalConfig = {
+      auth: {
+        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+        redirectUri: window.location.origin + window.location.pathname
+      }
+    };
 
-      const listEl = document.getElementById("routesList");
-      if (!listEl) {
-        console.error("routesList element not found");
-        return;
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const statusMessage = document.getElementById("statusMessage");
+    const listEl = document.getElementById("routesList");
+
+    async function fetchFiles(accessToken) {
+      const graphEndpoint = "https://graph.microsoft.com/v1.0/me/drive/root/children";
+
+      const res = await fetch(graphEndpoint, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error(`Graph API error: ${res.status} ${res.statusText}`);
       }
 
-      files.forEach(file => {
-        const routeParam = encodeURIComponent(file.downloadUrl || file.name);
+      const data = await res.json();
+      return data.value
+        .filter(file => file.name.match(/\.(gpx|geojson)$/i))
+        .map(file => ({
+          id: file.id,
+          name: file.name,
+          downloadUrl: file["@microsoft.graph.downloadUrl"]
+        }));
+    }
 
-        const li = document.createElement("li");
+    async function main() {
+      try {
+        // Check for signed in account
+        let account = msalInstance.getActiveAccount();
+        if (!account) {
+          // Try to get account from cache (if redirected here post-login)
+          const currentAccounts = msalInstance.getAllAccounts();
+          if (currentAccounts.length === 0) {
+            // No account, redirect to login page or index
+            statusMessage.textContent = "Not signed in. Redirecting to login...";
+            setTimeout(() => {
+              window.location.href = "index.html";
+            }, 2000);
+            return;
+          }
+          account = currentAccounts[0];
+          msalInstance.setActiveAccount(account);
+        }
 
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = file.name;
-        nameSpan.classList.add("route-name");
+        // Acquire token silently
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["Files.Read.All"],
+          account: account
+        });
 
-        const viewBtn = document.createElement("button");
-        viewBtn.textContent = "View";
-        viewBtn.onclick = () => {
-          window.location.href = `view.html?route=${routeParam}`;
-        };
+        const files = await fetchFiles(response.accessToken);
 
-        li.appendChild(nameSpan);
-        li.appendChild(viewBtn);
-        listEl.appendChild(li);
-      });
-    });
+        if (files.length === 0) {
+          statusMessage.textContent = "No .gpx or .geojson routes found in your OneDrive.";
+          return;
+        }
+
+        statusMessage.textContent = `Found ${files.length} routes:`;
+
+        files.forEach(file => {
+          const routeParam = encodeURIComponent(file.downloadUrl);
+
+          const li = document.createElement("li");
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = file.name;
+          nameSpan.classList.add("route-name");
+
+          const viewBtn = document.createElement("button");
+          viewBtn.textContent = "View";
+          viewBtn.onclick = () => {
+            window.location.href = `view.html?route=${routeParam}`;
+          };
+
+          li.appendChild(nameSpan);
+          li.appendChild(viewBtn);
+          listEl.appendChild(li);
+        });
+
+      } catch (err) {
+        console.error(err);
+        statusMessage.textContent = "Error loading routes: " + err.message;
+      }
+    }
+
+    main();
   </script>
 </body>
 </html>
