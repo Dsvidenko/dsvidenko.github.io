@@ -74,22 +74,33 @@
     <button onclick="window.location.href='routes.html'">Access Routes</button>
     <div id="userInfo" style="margin-top: 1rem; font-size: 1rem; color: #444;"></div>
   </div>
-
+</body>
   <script>
-    const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: window.location.href
+  const msalConfig = {
+    auth: {
+      clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
+      redirectUri: window.location.origin + window.location.pathname
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+  const connectBtn = document.getElementById("connectBtn");
+
+  connectBtn.addEventListener("click", async () => {
+    try {
+      const response = await msalInstance.loginPopup({
+        scopes: ["Files.Read.All", "User.Read"]
+      });
+
+      if (response.account) {
+        msalInstance.setActiveAccount(response.account);
+        document.body.innerHTML = `<h1>Welcome, ${response.account.username}!</h1>`;
       }
-    };
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    const loginView = document.getElementById("loginView");
-    const appView = document.getElementById("appView");
-    const connectBtn = document.getElementById("connectBtn");
-    const loginMessage = document.getElementById("loginMessage");
-    const userInfo = document.getElementById("userInfo");
-
-    function showAppView(account) {
-      loginView.classList.add("hidden");
-      appView.classList.remov
+    } catch (err) {
+      console.error("Popup login failed:", err);
+    }
+  });
+</script>
+</html>
+  
