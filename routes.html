@@ -2,109 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Available Routes</title>
+  <title>Route Selection</title>
   <style>
     body {
       font-family: sans-serif;
-      margin: 2rem;
+      background: #f0f4f8;
+      padding: 2rem;
     }
-
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
     ul {
-      list-style-type: none;
+      list-style: none;
       padding: 0;
     }
-
     li {
-      margin: 1rem 0;
-      padding: 1rem;
-      border: 1px solid #ccc;
+      background: white;
       border-radius: 8px;
+      margin-bottom: 10px;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background-color: #f9f9f9;
     }
-
     button {
-      padding: 0.5rem 1rem;
+      padding: 5px 10px;
       border: none;
-      border-radius: 4px;
-      background-color: #0077cc;
+      background-color: #0078d4;
       color: white;
+      border-radius: 4px;
       cursor: pointer;
     }
-
     button:hover {
-      background-color: #005fa3;
+      background-color: #005ea2;
     }
   </style>
 </head>
 <body>
-  <h1>Available Routes</h1>
-  <ul id="routesList">Loading routes...</ul>
+  <h1>Select a Route</h1>
+  <button onclick="login()">Login with Microsoft</button>
+  <ul id="fileList"></ul>
 
   <script>
-    async function loadRoutes() {
-      const listEl = document.getElementById("routesList");
-      listEl.innerHTML = "Loading routes...";
+    const CLIENT_ID = "YOUR_CLIENT_ID_HERE";
+    const REDIRECT_URI = window.location.href;
+    const SCOPES = ["files.read.all"];
 
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        listEl.innerHTML = "<li>You must log in to view routes.</li>";
-        return;
-      }
+    let accessToken = null;
 
-      // Replace these with your actual shared folder info (or parse from a link)
-      const sharedItemUrl = encodeURIComponent("https://1drv.ms/u/s!your_shared_link_here");
-      const apiUrl = `https://graph.microsoft.com/v1.0/shares/u!${sharedItemUrl}/driveItem?$expand=children`;
+    function login() {
+      const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${SCOPES.join(" ")}&response_mode=fragment`;
+      window.location.href = authUrl;
+    }
 
-      try {
-        const res = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const files = data.children || [];
-
-        if (files.length === 0) {
-          listEl.innerHTML = "<li>No routes found in folder.</li>";
-          return;
-        }
-
-        listEl.innerHTML = "";
-
-        files.forEach(file => {
-          if (!file.name.endsWith(".gpx") && !file.name.endsWith(".geojson")) return;
-
-          const li = document.createElement("li");
-          li.textContent = file.name;
-
-          const viewBtn = document.createElement("button");
-          viewBtn.textContent = "View";
-
-          viewBtn.onclick = () => {
-            localStorage.setItem("selectedRoute", JSON.stringify({
-              name: file.name,
-              id: file.id,
-              downloadUrl: file["@microsoft.graph.downloadUrl"]
-            }));
-            window.location.href = "view.html";
-          };
-
-          li.appendChild(viewBtn);
-          listEl.appendChild(li);
-        });
-
-      } catch (err) {
-        console.error("Failed to load routes:", err);
-        listEl.innerHTML = "<li>Failed to load routes.</li>";
+    function parseAccessTokenFromUrl() {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      if (params.has("access_token")) {
+        accessToken = params.get("access_token");
+        console.log("Access token retrieved:", accessToken);
+        fetchDriveItems();
       }
     }
 
-    loadRoutes();
+    function fetchDriveItems() {
+      fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const files = data.value.filter(file =>
+          file.name.endsWith('.gpx') || file.name.endsWith('.geojson')
+        );
+        renderFileList(files);
+      })
+      .catch(error => {
+        console.error("Failed to load routes:", error);
+        alert("Failed to load routes: " + error.message);
+      });
+    }
+
+    function renderFileList(files) {
+      const list = document.getElementById("fileList");
+      list.innerHTML = "";
+      if (files.length === 0) {
+        list.innerHTML = "<li>No route files found.</li>";
+        return;
+      }
+      files.forEach(file => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${file.name}</span>
+          <button onclick='viewRoute(${JSON.stringify(file)})'>View</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function viewRoute(file) {
+      localStorage.setItem("selectedRoute", JSON.stringify(file));
+      window.location.href = "view.html";
+    }
+
+    // Run on load
+    window.onload = () => {
+      parseAccessTokenFromUrl();
+    };
   </script>
 </body>
 </html>
