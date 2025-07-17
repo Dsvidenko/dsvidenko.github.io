@@ -4,12 +4,27 @@
   <title>View Route</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
+    body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
     #map { height: 400px; margin-top: 20px; }
-    #elevationChart { width: 100%; max-width: 600px; height: 300px; }
+    #elevationChart { width: 100%; max-width: 600px; height: 300px; margin-top: 20px; }
+    #backBtn {
+      background-color: #0078d4;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-bottom: 1rem;
+    }
+    #backBtn:hover {
+      background-color: #005fa3;
+    }
   </style>
 </head>
 <body>
+  <button id="backBtn" onclick="window.location.href='routes.html'">← Back to Routes</button>
   <h1>Viewing Route</h1>
   <p id="routeName">Loading...</p>
   <div id="map"></div>
