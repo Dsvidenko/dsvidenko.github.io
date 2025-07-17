@@ -4,12 +4,36 @@
   <meta charset="UTF-8" />
   <title>Routes</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; background: #f9f9f9; }
+    body { font-family: sans-serif; padding: 2em; background: #f9f9f9; max-width: 700px; margin: auto; }
     h1 { margin-bottom: 1em; }
     ul { list-style: none; padding: 0; }
-    li { background: #fff; margin-bottom: 0.5em; padding: 1em; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    button { float: right; padding: 0.4em 1em; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; }
+    li { 
+      background: #fff; 
+      margin-bottom: 0.8em; 
+      padding: 1em; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+      display: flex; 
+      align-items: center;
+      gap: 1em;
+    }
+    button { 
+      padding: 0.4em 1em; 
+      border: none; 
+      border-radius: 5px; 
+      background-color: #4CAF50; 
+      color: white; 
+      cursor: pointer; 
+      flex-shrink: 0;
+    }
     button:hover { background-color: #45a049; }
+    input[type="text"] {
+      flex-grow: 1;
+      padding: 0.4em 0.6em;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
     .error { color: red; margin-top: 1em; }
   </style>
 </head>
@@ -22,8 +46,25 @@
     const token = sessionStorage.getItem('access_token');
     const fileListEl = document.getElementById('fileList');
     const errorEl = document.getElementById('error');
+    const TAGS_STORAGE_KEY = 'routeTags';
+
+    // Load saved tags from localStorage or empty object
+    function loadTags() {
+      const raw = localStorage.getItem(TAGS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }
+
+    // Save tags object to localStorage
+    function saveTags(tags) {
+      localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags));
+    }
 
     async function fetchAndListFiles() {
+      if (!token) {
+        errorEl.textContent = 'No access token found. Please login first.';
+        return;
+      }
+
       try {
         const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
           headers: { Authorization: `Bearer ${token}` }
@@ -33,6 +74,8 @@
         const data = await res.json();
 
         const routeFiles = [];
+        // We will load tags now
+        const tags = loadTags();
 
         for (const item of data.value) {
           if (item.folder) {
@@ -54,26 +97,46 @@
 
         if (routeFiles.length === 0) {
           errorEl.textContent = 'No route files found in your OneDrive.';
-        } else {
-          routeFiles.forEach(file => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-              <span>${file.name}</span>
-              <button onclick="viewRoute('${file.id}', '${file.name.replace(/'/g, "\'")}')">View</button>
-            `;
-            fileListEl.appendChild(li);
-          });
+          return;
         }
+
+        routeFiles.forEach(file => {
+          const li = document.createElement('li');
+
+          // Route name label
+          const routeLabel = document.createElement('span');
+          routeLabel.textContent = file.name;
+          routeLabel.style.flexShrink = "0";
+
+          // Tag input field
+          const tagInput = document.createElement('input');
+          tagInput.type = 'text';
+          tagInput.placeholder = 'Add a tag...';
+          tagInput.value = tags[file.id] || '';
+          tagInput.addEventListener('input', () => {
+            tags[file.id] = tagInput.value.trim();
+            saveTags(tags);
+          });
+
+          // View button
+          const viewBtn = document.createElement('button');
+          viewBtn.textContent = 'View';
+          viewBtn.onclick = () => {
+            localStorage.setItem('selected_file_id', file.id);
+            localStorage.setItem('selected_file_name', file.name);
+            window.location.href = 'view.html';
+          };
+
+          li.appendChild(routeLabel);
+          li.appendChild(tagInput);
+          li.appendChild(viewBtn);
+          fileListEl.appendChild(li);
+        });
+
       } catch (err) {
         console.error(err);
         errorEl.textContent = 'Failed to load routes: ' + err.message;
       }
-    }
-
-    function viewRoute(id, name) {
-      localStorage.setItem('selected_file_id', id);
-      localStorage.setItem('selected_file_name', name);
-      window.location.href = 'view.html';
     }
 
     fetchAndListFiles();
