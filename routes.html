@@ -2,121 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Route Selection</title>
+  <title>Available Routes</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #f0f4f8;
+      background: #f8f9fa;
       padding: 2rem;
     }
     h1 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
+      text-align: center;
     }
     ul {
       list-style: none;
       padding: 0;
+      max-width: 600px;
+      margin: 2rem auto;
     }
     li {
       background: white;
-      border-radius: 8px;
       margin-bottom: 10px;
-      padding: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     button {
-      padding: 5px 10px;
-      border: none;
-      background-color: #0078d4;
+      padding: 8px 12px;
+      background-color: #007bff;
       color: white;
-      border-radius: 4px;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #005ea2;
+      background-color: #0056b3;
+    }
+    .error {
+      color: red;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <h1>Select a Route</h1>
-  <button onclick="login()">Login with Microsoft</button>
-  <ul id="fileList"></ul>
+  <ul id="routesList"></ul>
+  <div class="error" id="errorMsg"></div>
 
   <script>
-    const CLIENT_ID = "YOUR_CLIENT_ID_HERE";
-    const REDIRECT_URI = window.location.href;
-    const SCOPES = ["files.read.all"];
+    const token = localStorage.getItem("access_token");
+    const errorMsg = document.getElementById("errorMsg");
+    const listEl = document.getElementById("routesList");
 
-    let accessToken = null;
-
-    function login() {
-      const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${SCOPES.join(" ")}&response_mode=fragment`;
-      window.location.href = authUrl;
+    if (!token) {
+      errorMsg.textContent = "Access token not found. Please log in again.";
+      throw new Error("No access token.");
     }
 
-    function parseAccessTokenFromUrl() {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      if (params.has("access_token")) {
-        accessToken = params.get("access_token");
-        console.log("Access token retrieved:", accessToken);
-        fetchDriveItems();
-      }
-    }
+    async function fetchFiles() {
+      try {
+        // Optional: specify a folder path instead of root
+        const folderPath = "routes"; // adjust as needed
+        const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${folderPath}:/children`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
 
-    function fetchDriveItems() {
-      fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+        if (!res.ok) {
+          throw new Error("Failed to load routes.");
         }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-        }
-        return response.json();
-      })
-      .then(data => {
+
+        const data = await res.json();
         const files = data.value.filter(file =>
-          file.name.endsWith('.gpx') || file.name.endsWith('.geojson')
+          file.name.endsWith(".gpx") || file.name.endsWith(".geojson")
         );
-        renderFileList(files);
-      })
-      .catch(error => {
-        console.error("Failed to load routes:", error);
-        alert("Failed to load routes: " + error.message);
-      });
-    }
 
-    function renderFileList(files) {
-      const list = document.getElementById("fileList");
-      list.innerHTML = "";
-      if (files.length === 0) {
-        list.innerHTML = "<li>No route files found.</li>";
-        return;
+        if (files.length === 0) {
+          errorMsg.textContent = "No route files found.";
+          return;
+        }
+
+        files.forEach(file => {
+          const li = document.createElement("li");
+          li.textContent = file.name;
+
+          const viewBtn = document.createElement("button");
+          viewBtn.textContent = "View";
+
+          viewBtn.onclick = () => {
+            localStorage.setItem("selectedRoute", JSON.stringify({
+              name: file.name,
+              downloadUrl: file["@microsoft.graph.downloadUrl"]
+            }));
+            window.location.href = "view.html";
+          };
+
+          li.appendChild(viewBtn);
+          listEl.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+        errorMsg.textContent = "Failed to load routes.";
       }
-      files.forEach(file => {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <span>${file.name}</span>
-          <button onclick='viewRoute(${JSON.stringify(file)})'>View</button>
-        `;
-        list.appendChild(li);
-      });
     }
 
-    function viewRoute(file) {
-      localStorage.setItem("selectedRoute", JSON.stringify(file));
-      window.location.href = "view.html";
-    }
-
-    // Run on load
-    window.onload = () => {
-      parseAccessTokenFromUrl();
-    };
+    fetchFiles();
   </script>
 </body>
 </html>
