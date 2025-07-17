@@ -63,8 +63,8 @@
     async function fetchFiles() {
       try {
         // Optional: specify a folder path instead of root
-        const folderPath = "routes"; // adjust as needed
-        const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${folderPath}:/children`, {
+        const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/children`, {
+
           headers: {
             Authorization: `Bearer ${token}`
           }
