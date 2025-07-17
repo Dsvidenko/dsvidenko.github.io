@@ -1,82 +1,110 @@
-<!DOCTYPE html>
+@@ -2,113 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <title>Available Routes</title>
   <title>Routes</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; background: #f9f9f9; max-width: 700px; margin: auto; }
+    body {
+      font-family: sans-serif;
+      background: #f8f9fa;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
+    li {
+      background: white;
+      margin-bottom: 10px;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      padding: 8px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+    body { font-family: sans-serif; padding: 2em; background: #f9f9f9; }
     h1 { margin-bottom: 1em; }
     ul { list-style: none; padding: 0; }
-    li { 
-      background: #fff; 
-      margin-bottom: 0.8em; 
-      padding: 1em; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-      display: flex; 
-      align-items: center;
-      gap: 1em;
-    }
-    button { 
-      padding: 0.4em 1em; 
-      border: none; 
-      border-radius: 5px; 
-      background-color: #4CAF50; 
-      color: white; 
-      cursor: pointer; 
-      flex-shrink: 0;
-    }
+    li { background: #fff; margin-bottom: 0.5em; padding: 1em; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    button { float: right; padding: 0.4em 1em; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; }
     button:hover { background-color: #45a049; }
-    input[type="text"] {
-      flex-grow: 1;
-      padding: 0.4em 0.6em;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
     .error { color: red; margin-top: 1em; }
   </style>
 </head>
 <body>
   <h1>Select a Route</h1>
+  <ul id="routesList"></ul>
+  <div class="error" id="errorMsg"></div>
   <ul id="fileList"></ul>
   <div id="error" class="error"></div>
 
   <script>
+    const token = localStorage.getItem("access_token");
+    const errorMsg = document.getElementById("errorMsg");
+    const listEl = document.getElementById("routesList");
+
+    if (!token) {
+      errorMsg.textContent = "Access token not found. Please log in again.";
+      throw new Error("No access token.");
+    }
     const token = sessionStorage.getItem('access_token');
     const fileListEl = document.getElementById('fileList');
     const errorEl = document.getElementById('error');
-    const TAGS_STORAGE_KEY = 'routeTags';
 
-    // Load saved tags from localStorage or empty object
-    function loadTags() {
-      const raw = localStorage.getItem(TAGS_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    }
-
-    // Save tags object to localStorage
-    function saveTags(tags) {
-      localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags));
-    }
-
+    async function fetchFiles() {
     async function fetchAndListFiles() {
-      if (!token) {
-        errorEl.textContent = 'No access token found. Please login first.';
-        return;
-      }
-
       try {
+        // Optional: specify a folder path instead of root
+        const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/children`, {
+
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
+        if (!res.ok) {
+          throw new Error("Failed to load routes.");
+        }
+
         if (!res.ok) throw new Error(`Graph API error: ${res.status}`);
         const data = await res.json();
+        const files = data.value.filter(file =>
+          file.name.endsWith(".gpx") || file.name.endsWith(".geojson")
+        );
 
+        if (files.length === 0) {
+          errorMsg.textContent = "No route files found.";
+          return;
+        }
         const routeFiles = [];
-        // We will load tags now
-        const tags = loadTags();
 
+        files.forEach(file => {
+          const li = document.createElement("li");
+          li.textContent = file.name;
         for (const item of data.value) {
           if (item.folder) {
             // Traverse into folders
@@ -85,6 +113,16 @@
             });
             const subData = await subRes.json();
 
+          const viewBtn = document.createElement("button");
+          viewBtn.textContent = "View";
+
+          viewBtn.onclick = () => {
+            localStorage.setItem("selectedRoute", JSON.stringify({
+              name: file.name,
+              downloadUrl: file["@microsoft.graph.downloadUrl"]
+            }));
+            window.location.href = "view.html";
+          };
             for (const file of subData.value) {
               if (file.name.endsWith('.gpx') || file.name.endsWith('.geojson')) {
                 routeFiles.push(file);
@@ -95,48 +133,33 @@
           }
         }
 
+          li.appendChild(viewBtn);
+          listEl.appendChild(li);
+        });
         if (routeFiles.length === 0) {
           errorEl.textContent = 'No route files found in your OneDrive.';
-          return;
-        }
-
-        routeFiles.forEach(file => {
-          const li = document.createElement('li');
-
-          // Route name label
-          const routeLabel = document.createElement('span');
-          routeLabel.textContent = file.name;
-          routeLabel.style.flexShrink = "0";
-
-          // Tag input field
-          const tagInput = document.createElement('input');
-          tagInput.type = 'text';
-          tagInput.placeholder = 'Add a tag...';
-          tagInput.value = tags[file.id] || '';
-          tagInput.addEventListener('input', () => {
-            tags[file.id] = tagInput.value.trim();
-            saveTags(tags);
+        } else {
+          routeFiles.forEach(file => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <span>${file.name}</span>
+              <button onclick="viewRoute('${file.id}', '${file.name.replace(/'/g, "\'")}')">View</button>
+            `;
+            fileListEl.appendChild(li);
           });
-
-          // View button
-          const viewBtn = document.createElement('button');
-          viewBtn.textContent = 'View';
-          viewBtn.onclick = () => {
-            localStorage.setItem('selected_file_id', file.id);
-            localStorage.setItem('selected_file_name', file.name);
-            window.location.href = 'view.html';
-          };
-
-          li.appendChild(routeLabel);
-          li.appendChild(tagInput);
-          li.appendChild(viewBtn);
-          fileListEl.appendChild(li);
-        });
-
+        }
       } catch (err) {
         console.error(err);
+        errorMsg.textContent = "Failed to load routes.";
         errorEl.textContent = 'Failed to load routes: ' + err.message;
       }
+    }
+
+    fetchFiles();
+    function viewRoute(id, name) {
+      localStorage.setItem('selected_file_id', id);
+      localStorage.setItem('selected_file_name', name);
+      window.location.href = 'view.html';
     }
 
     fetchAndListFiles();
