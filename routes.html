@@ -2,194 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Routes - Route Evaluation Insights</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Route Evaluation Insights - Routes</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fa;
-      color: #333;
-      padding: 2rem;
-      max-width: 700px;
-      margin: 0 auto;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      margin: 2rem auto;
+      max-width: 720px;
+      color: #222;
     }
-
     h1 {
-      font-weight: 700;
-      font-size: 2.5rem;
+      text-align: center;
       margin-bottom: 1.5rem;
-      text-align: center;
-      color: #0078d4;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
     }
-
-    #statusMessage {
-      text-align: center;
-      margin-bottom: 1rem;
-      color: #555;
-    }
-
-    ul {
+    ul#routesList {
       list-style: none;
       padding: 0;
-      margin: 0;
-      flex-grow: 1;
     }
-
-    li {
-      background: #fff;
-      margin-bottom: 1rem;
-      padding: 1rem 1.5rem;
-      border-radius: 10px;
+    li.route-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
-      transition: box-shadow 0.25s ease;
-    }
-
-    li:hover {
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .route-name {
-      font-size: 1.1rem;
+      border: 1px solid #ddd;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.7rem;
+      border-radius: 6px;
+      background: #f9f9f9;
       font-weight: 600;
-      color: #222;
-      word-break: break-word;
     }
-
-    button {
+    button.view-btn {
       background-color: #0078d4;
       color: white;
       border: none;
-      padding: 0.6rem 1.3rem;
-      font-size: 1rem;
-      font-weight: 600;
-      border-radius: 6px;
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
       cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0, 120, 212, 0.4);
-      transition: background-color 0.3s ease, box-shadow 0.3s ease;
-      user-select: none;
+      transition: background-color 0.3s ease;
     }
-
-    button:hover {
+    button.view-btn:hover {
       background-color: #005fa3;
-      box-shadow: 0 6px 15px rgba(0, 95, 163, 0.6);
-    }
-
-    button:active {
-      transform: scale(0.98);
     }
   </style>
 </head>
 <body>
-  <h1>Your OneDrive Routes</h1>
-  <div id="statusMessage">Loading your routes...</div>
-  <ul id="routesList"></ul>
+  <h1>Your Routes</h1>
+  <ul id="routesList">
+    <!-- Populated dynamically -->
+  </ul>
 
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
   <script>
-    const msalConfig = {
-      auth: {
-        clientId: "bea6e2a8-6d4d-47fd-b009-51977da0cf17",
-        redirectUri: window.location.origin + window.location.pathname
-      }
-    };
+    // Mock files from OneDrive API (replace with real API fetch)
+    const files = [
+      { id: "123", name: "route1.gpx", downloadUrl: "https://example.com/routes/route1.gpx" },
+      { id: "456", name: "route2.geojson", downloadUrl: "https://example.com/routes/route2.geojson" },
+      { id: "789", name: "route3.gpx", downloadUrl: "https://example.com/routes/route3.gpx" },
+    ];
 
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
-    const statusMessage = document.getElementById("statusMessage");
-    const listEl = document.getElementById("routesList");
+    const routesListEl = document.getElementById("routesList");
 
-    async function fetchFiles(accessToken) {
-      const graphEndpoint = "https://graph.microsoft.com/v1.0/me/drive/root/children";
+    function addRouteItem(file) {
+      const li = document.createElement('li');
+      li.className = 'route-item';
+      li.textContent = file.name;
 
-      const res = await fetch(graphEndpoint, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
+      const btn = document.createElement('button');
+      btn.className = 'view-btn';
+      btn.textContent = 'View';
 
-      if (!res.ok) {
-        throw new Error(`Graph API error: ${res.status} ${res.statusText}`);
-      }
+      btn.onclick = () => {
+        // Store selected route in localStorage
+        localStorage.setItem('selectedRoute', JSON.stringify(file));
+        // Redirect to view page
+        window.location.href = 'view.html';
+      };
 
-      const data = await res.json();
-      return data.value
-        .filter(file => file.name.match(/\.(gpx|geojson)$/i))
-        .map(file => ({
-          id: file.id,
-          name: file.name,
-          downloadUrl: file["@microsoft.graph.downloadUrl"]
-        }));
+      li.appendChild(btn);
+      routesListEl.appendChild(li);
     }
 
-    async function main() {
-      try {
-        // Check for signed in account
-        let account = msalInstance.getActiveAccount();
-        if (!account) {
-          // Try to get account from cache (if redirected here post-login)
-          const currentAccounts = msalInstance.getAllAccounts();
-          if (currentAccounts.length === 0) {
-            // No account, redirect to login page or index
-            statusMessage.textContent = "Not signed in. Redirecting to login...";
-            setTimeout(() => {
-              window.location.href = "index.html";
-            }, 2000);
-            return;
-          }
-          account = currentAccounts[0];
-          msalInstance.setActiveAccount(account);
-        }
-
-        // Acquire token silently
-        const response = await msalInstance.acquireTokenSilent({
-          scopes: ["Files.Read.All"],
-          account: account
-        });
-
-        const files = await fetchFiles(response.accessToken);
-
-        if (files.length === 0) {
-          statusMessage.textContent = "No .gpx or .geojson routes found in your OneDrive.";
-          return;
-        }
-
-        statusMessage.textContent = `Found ${files.length} routes:`;
-
-        files.forEach(file => {
-          const routeParam = encodeURIComponent(file.downloadUrl);
-
-          const li = document.createElement("li");
-
-          const nameSpan = document.createElement("span");
-          nameSpan.textContent = file.name;
-          nameSpan.classList.add("route-name");
-
-          const viewBtn = document.createElement("button");
-          viewBtn.textContent = "View";
-          viewBtn.onclick = () => {
-          const routeParam = encodeURIComponent(file.downloadUrl || file.name);
-          const nameParam = encodeURIComponent(file.name);
-          window.location.href = `view.html?route=${routeParam}&name=${nameParam}`;
-};
-
-
-          li.appendChild(nameSpan);
-          li.appendChild(viewBtn);
-          listEl.appendChild(li);
-        });
-
-      } catch (err) {
-        console.error(err);
-        statusMessage.textContent = "Error loading routes: " + err.message;
+    function loadRoutes() {
+      routesListEl.innerHTML = '';
+      for (const file of files) {
+        addRouteItem(file);
       }
     }
 
-    main();
+    loadRoutes();
   </script>
 </body>
 </html>
