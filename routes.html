@@ -1,93 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Route Evaluation Insights - Routes</title>
+  <title>Routes</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 2rem auto;
-      max-width: 720px;
-      color: #222;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-    ul#routesList {
-      list-style: none;
-      padding: 0;
-    }
-    li.route-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border: 1px solid #ddd;
-      padding: 0.75rem 1rem;
-      margin-bottom: 0.7rem;
-      border-radius: 6px;
-      background: #f9f9f9;
-      font-weight: 600;
-    }
-    button.view-btn {
-      background-color: #0078d4;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    button.view-btn:hover {
-      background-color: #005fa3;
-    }
+    body { font-family: sans-serif; padding: 2rem; }
+    li { margin-bottom: 10px; }
+    button { margin-left: 10px; }
   </style>
 </head>
 <body>
-  <h1>Your Routes</h1>
-  <ul id="routesList">
-    <!-- Populated dynamically -->
-  </ul>
+  <h1>Available Routes</h1>
+  <ul id="routesList"></ul>
 
   <script>
-    // Mock files from OneDrive API (replace with real API fetch)
+    // This list should be dynamically filled using OneDrive API or your source
     const files = [
-      { id: "123", name: "route1.gpx", downloadUrl: "https://example.com/routes/route1.gpx" },
-      { id: "456", name: "route2.geojson", downloadUrl: "https://example.com/routes/route2.geojson" },
-      { id: "789", name: "route3.gpx", downloadUrl: "https://example.com/routes/route3.gpx" },
+      { name: "route1.gpx", downloadUrl: "routes/route1.gpx" },
+      { name: "route2.geojson", downloadUrl: "routes/route2.geojson" }
     ];
 
-    const routesListEl = document.getElementById("routesList");
+    const listEl = document.getElementById("routesList");
 
-    function addRouteItem(file) {
-      const li = document.createElement('li');
-      li.className = 'route-item';
+    files.forEach(file => {
+      const li = document.createElement("li");
       li.textContent = file.name;
 
-      const btn = document.createElement('button');
-      btn.className = 'view-btn';
-      btn.textContent = 'View';
-
-      btn.onclick = () => {
-        // Store selected route in localStorage
-        localStorage.setItem('selectedRoute', JSON.stringify(file));
-        // Redirect to view page
-        window.location.href = 'view.html';
+      const viewBtn = document.createElement("button");
+      viewBtn.textContent = "View";
+      viewBtn.onclick = () => {
+        // Save to localStorage
+        localStorage.setItem("selectedRoute", JSON.stringify(file));
+        window.location.href = "view.html";
       };
 
-      li.appendChild(btn);
-      routesListEl.appendChild(li);
-    }
-
-    function loadRoutes() {
-      routesListEl.innerHTML = '';
-      for (const file of files) {
-        addRouteItem(file);
-      }
-    }
-
-    loadRoutes();
+      li.appendChild(viewBtn);
+      listEl.appendChild(li);
+    });
   </script>
 </body>
 </html>
