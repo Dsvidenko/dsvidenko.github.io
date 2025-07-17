@@ -1,41 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Routes</title>
+  <meta charset="UTF-8" />
+  <title>Available Routes</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    li { margin-bottom: 10px; }
-    button { margin-left: 10px; }
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #f9f9f9;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #0077cc;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
   </style>
 </head>
 <body>
   <h1>Available Routes</h1>
-  <ul id="routesList"></ul>
+  <ul id="routesList">Loading routes...</ul>
 
   <script>
-    // This list should be dynamically filled using OneDrive API or your source
-    const files = [
-      { name: "route1.gpx", downloadUrl: "routes/route1.gpx" },
-      { name: "route2.geojson", downloadUrl: "routes/route2.geojson" }
-    ];
+    async function loadRoutes() {
+      const listEl = document.getElementById("routesList");
+      listEl.innerHTML = "Loading routes...";
 
-    const listEl = document.getElementById("routesList");
+      try {
+        // Replace this URL with your real API that returns a list of files
+        const res = await fetch("routes/files.json");
+        const files = await res.json();
 
-    files.forEach(file => {
-      const li = document.createElement("li");
-      li.textContent = file.name;
+        if (!Array.isArray(files) || files.length === 0) {
+          listEl.innerHTML = "<li>No routes available.</li>";
+          return;
+        }
 
-      const viewBtn = document.createElement("button");
-      viewBtn.textContent = "View";
-      viewBtn.onclick = () => {
-        // Save to localStorage
-        localStorage.setItem("selectedRoute", JSON.stringify(file));
-        window.location.href = "view.html";
-      };
+        listEl.innerHTML = "";
 
-      li.appendChild(viewBtn);
-      listEl.appendChild(li);
-    });
+        files.forEach(file => {
+          const li = document.createElement("li");
+          li.textContent = file.name;
+
+          const viewBtn = document.createElement("button");
+          viewBtn.textContent = "View";
+
+          viewBtn.onclick = () => {
+            // Save full file info to localStorage
+            localStorage.setItem("selectedRoute", JSON.stringify(file));
+            window.location.href = "view.html";
+          };
+
+          li.appendChild(viewBtn);
+          listEl.appendChild(li);
+        });
+      } catch (err) {
+        console.error("Failed to load routes:", err);
+        listEl.innerHTML = "<li>Failed to load routes.</li>";
+      }
+    }
+
+    loadRoutes();
   </script>
 </body>
 </html>
