@@ -33,15 +33,15 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module">
+    const nameEl = document.getElementById("routeName");
     const fileId = localStorage.getItem("selected_file_id");
     const fileName = localStorage.getItem("selected_file_name");
     const accessToken = sessionStorage.getItem("access_token");
 
-    const nameEl = document.getElementById("routeName");
-
     if (!fileId || !fileName || !accessToken) {
-      nameEl.textContent = "Missing route info.";
-      throw new Error("Missing file ID, name, or token");
+      nameEl.textContent = "Missing route info. Please select a route from the routes page.";
+      // Stop script gracefully:
+      throw new Error("Missing file ID, file name, or access token in storage.");
     }
 
     nameEl.textContent = `Now viewing: ${fileName}`;
@@ -78,7 +78,7 @@
         }
       } catch (err) {
         console.error(err);
-        nameEl.textContent = "Failed to load route.";
+        nameEl.textContent = "Failed to load route: " + err.message;
       }
     }
 
