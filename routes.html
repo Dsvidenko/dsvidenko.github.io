@@ -2,27 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Available Routes</title>
+  <title>Routes</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #f8f9fa;
-      padding: 2rem;
-    }
-    h1 {
-      text-align: center;
-    }
-    #loadingMessage {
-      text-align: center;
-      font-style: italic;
-      margin-top: 1rem;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      max-width: 600px;
-      margin: 2rem auto;
-    }
+    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    h1 { text-align: center; }
+    ul { list-style: none; padding: 0; max-width: 600px; margin: 2rem auto; }
     li {
       background: white;
       margin-bottom: 10px;
@@ -41,13 +25,13 @@
       border-radius: 5px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .error {
-      color: red;
+    button:hover { background-color: #0056b3; }
+    .error { color: red; text-align: center; margin-top: 1rem; }
+    #loadingMessage {
       text-align: center;
+      font-style: italic;
       margin-top: 1rem;
+      color: #555;
     }
   </style>
 </head>
@@ -58,7 +42,7 @@
   <div id="errorMsg" class="error"></div>
 
   <script>
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("access_token"); // your token source
     const loadingMessage = document.getElementById("loadingMessage");
     const listEl = document.getElementById("routesList");
     const errorMsg = document.getElementById("errorMsg");
@@ -71,37 +55,43 @@
 
     async function fetchRoutes() {
       try {
-        // Fetch root children (files & folders)
+        // Show loading message immediately
+        loadingMessage.style.display = "block";
+        errorMsg.textContent = "";
+        listEl.innerHTML = "";
+
+        // Fetch root items
         const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
           headers: { Authorization: `Bearer ${token}` }
         });
-
         if (!res.ok) throw new Error(`Graph API error: ${res.status}`);
 
         const data = await res.json();
 
-        const routeFiles = [];
+        const folders = data.value.filter(item => item.folder);
+        const files = data.value.filter(item => !item.folder && (item.name.endsWith(".gpx") || item.name.endsWith(".geojson")));
 
-        // Traverse files and folders
-        for (const item of data.value) {
-          if (item.folder) {
-            // Fetch folder contents
-            const folderRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!folderRes.ok) continue; // skip if error
+        // Fetch all folder children concurrently
+        const folderFetches = folders.map(folder =>
+          fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folder.id}/children`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(res => res.ok ? res.json() : null).catch(() => null)
+        );
 
-            const folderData = await folderRes.json();
+        const folderDataArray = await Promise.all(folderFetches);
 
-            for (const file of folderData.value) {
+        const folderFiles = [];
+        folderDataArray.forEach(folderData => {
+          if (folderData && folderData.value) {
+            folderData.value.forEach(file => {
               if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
-                routeFiles.push(file);
+                folderFiles.push(file);
               }
-            }
-          } else if (item.name.endsWith(".gpx") || item.name.endsWith(".geojson")) {
-            routeFiles.push(item);
+            });
           }
-        }
+        });
+
+        const routeFiles = [...files, ...folderFiles];
 
         loadingMessage.style.display = "none";
 
