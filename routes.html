@@ -8,16 +8,20 @@
       font-family: sans-serif;
       background: #f8f9fa;
       padding: 2rem;
-      max-width: 600px;
-      margin: auto;
     }
     h1 {
       text-align: center;
-      margin-bottom: 1rem;
+    }
+    #loadingMessage {
+      text-align: center;
+      font-style: italic;
+      margin-top: 1rem;
     }
     ul {
       list-style: none;
       padding: 0;
+      max-width: 600px;
+      margin: 2rem auto;
     }
     li {
       background: white;
@@ -49,80 +53,85 @@
 </head>
 <body>
   <h1>Select a Route</h1>
+  <div id="loadingMessage">Loading routes...</div>
   <ul id="routesList"></ul>
   <div id="errorMsg" class="error"></div>
 
   <script>
-    const token = localStorage.getItem('access_token');
-    const routesList = document.getElementById('routesList');
-    const errorMsg = document.getElementById('errorMsg');
+    const token = localStorage.getItem("access_token");
+    const loadingMessage = document.getElementById("loadingMessage");
+    const listEl = document.getElementById("routesList");
+    const errorMsg = document.getElementById("errorMsg");
 
     if (!token) {
+      loadingMessage.style.display = "none";
       errorMsg.textContent = "Access token not found. Please log in again.";
       throw new Error("No access token.");
     }
 
     async function fetchRoutes() {
       try {
-        // Fetch root children from OneDrive
-        const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+        // Fetch root children (files & folders)
+        const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children", {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        if (!res.ok) {
-          throw new Error(`Graph API error: ${res.status} ${res.statusText}`);
-        }
+        if (!res.ok) throw new Error(`Graph API error: ${res.status}`);
 
         const data = await res.json();
 
-        // Collect route files (.gpx and .geojson)
         const routeFiles = [];
 
+        // Traverse files and folders
         for (const item of data.value) {
           if (item.folder) {
-            // If folder, get children inside it
+            // Fetch folder contents
             const folderRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children`, {
               headers: { Authorization: `Bearer ${token}` }
             });
+            if (!folderRes.ok) continue; // skip if error
+
             const folderData = await folderRes.json();
 
             for (const file of folderData.value) {
-              if (file.name.endsWith('.gpx') || file.name.endsWith('.geojson')) {
+              if (file.name.endsWith(".gpx") || file.name.endsWith(".geojson")) {
                 routeFiles.push(file);
               }
             }
-          } else if (item.name.endsWith('.gpx') || item.name.endsWith('.geojson')) {
+          } else if (item.name.endsWith(".gpx") || item.name.endsWith(".geojson")) {
             routeFiles.push(item);
           }
         }
 
+        loadingMessage.style.display = "none";
+
         if (routeFiles.length === 0) {
-          errorMsg.textContent = "No route files found in your OneDrive.";
+          errorMsg.textContent = "No route files found.";
           return;
         }
 
-        // Render list
         routeFiles.forEach(file => {
-          const li = document.createElement('li');
+          const li = document.createElement("li");
           li.textContent = file.name;
 
-          const viewBtn = document.createElement('button');
-          viewBtn.textContent = 'View';
+          const viewBtn = document.createElement("button");
+          viewBtn.textContent = "View";
           viewBtn.onclick = () => {
-            localStorage.setItem('selectedRoute', JSON.stringify({
+            localStorage.setItem("selectedRoute", JSON.stringify({
               name: file.name,
-              downloadUrl: file['@microsoft.graph.downloadUrl']
+              downloadUrl: file["@microsoft.graph.downloadUrl"]
             }));
-            window.location.href = 'view.html';
+            window.location.href = "view.html";
           };
 
           li.appendChild(viewBtn);
-          routesList.appendChild(li);
+          listEl.appendChild(li);
         });
 
       } catch (err) {
+        loadingMessage.style.display = "none";
+        errorMsg.textContent = `Failed to load routes: ${err.message}`;
         console.error(err);
-        errorMsg.textContent = "Failed to load routes: " + err.message;
       }
     }
 
