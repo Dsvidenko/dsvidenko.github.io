@@ -8,15 +8,16 @@
       font-family: sans-serif;
       background: #f8f9fa;
       padding: 2rem;
+      max-width: 600px;
+      margin: auto;
     }
     h1 {
       text-align: center;
+      margin-bottom: 1rem;
     }
     ul {
       list-style: none;
       padding: 0;
-      max-width: 600px;
-      margin: 2rem auto;
     }
     li {
       background: white;
@@ -49,11 +50,11 @@
 <body>
   <h1>Select a Route</h1>
   <ul id="routesList"></ul>
-  <div class="error" id="errorMsg"></div>
+  <div id="errorMsg" class="error"></div>
 
   <script>
-    const token = sessionStorage.getItem('access_token');
-    const listEl = document.getElementById('routesList');
+    const token = localStorage.getItem('access_token');
+    const routesList = document.getElementById('routesList');
     const errorMsg = document.getElementById('errorMsg');
 
     if (!token) {
@@ -61,25 +62,31 @@
       throw new Error("No access token.");
     }
 
-    async function fetchAndListFiles() {
+    async function fetchRoutes() {
       try {
-        const routeFiles = [];
-
-        // Fetch root level
-        const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/children`, {
+        // Fetch root children from OneDrive
+        const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error(`Graph API error: ${res.status}`);
+
+        if (!res.ok) {
+          throw new Error(`Graph API error: ${res.status} ${res.statusText}`);
+        }
+
         const data = await res.json();
 
-        // Traverse folders and find route files
+        // Collect route files (.gpx and .geojson)
+        const routeFiles = [];
+
         for (const item of data.value) {
           if (item.folder) {
-            const subRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children`, {
+            // If folder, get children inside it
+            const folderRes = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/children`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            const subData = await subRes.json();
-            for (const file of subData.value) {
+            const folderData = await folderRes.json();
+
+            for (const file of folderData.value) {
               if (file.name.endsWith('.gpx') || file.name.endsWith('.geojson')) {
                 routeFiles.push(file);
               }
@@ -89,34 +96,37 @@
           }
         }
 
-        // Display list
         if (routeFiles.length === 0) {
-          errorMsg.textContent = 'No route files found in your OneDrive.';
-        } else {
-          routeFiles.forEach(file => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-              <span>${file.name}</span>
-              <button onclick='viewRoute(${JSON.stringify(file)})'>View</button>
-            `;
-            listEl.appendChild(li);
-          });
+          errorMsg.textContent = "No route files found in your OneDrive.";
+          return;
         }
+
+        // Render list
+        routeFiles.forEach(file => {
+          const li = document.createElement('li');
+          li.textContent = file.name;
+
+          const viewBtn = document.createElement('button');
+          viewBtn.textContent = 'View';
+          viewBtn.onclick = () => {
+            localStorage.setItem('selectedRoute', JSON.stringify({
+              name: file.name,
+              downloadUrl: file['@microsoft.graph.downloadUrl']
+            }));
+            window.location.href = 'view.html';
+          };
+
+          li.appendChild(viewBtn);
+          routesList.appendChild(li);
+        });
+
       } catch (err) {
         console.error(err);
-        errorMsg.textContent = 'Failed to load routes: ' + err.message;
+        errorMsg.textContent = "Failed to load routes: " + err.message;
       }
     }
 
-    function viewRoute(file) {
-      localStorage.setItem("selectedRoute", JSON.stringify({
-        name: file.name,
-        downloadUrl: file['@microsoft.graph.downloadUrl']
-      }));
-      window.location.href = "view.html";
-    }
-
-    fetchAndListFiles();
+    fetchRoutes();
   </script>
 </body>
 </html>
