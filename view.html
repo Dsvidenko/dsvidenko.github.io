@@ -22,6 +22,7 @@
       background-color: #005fa3;
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <button id="backBtn" onclick="window.location.href='routes.html'">← Back to Routes</button>
@@ -31,30 +32,43 @@
   <canvas id="elevationChart"></canvas>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
   <script type="module">
-    const routeInfo = JSON.parse(localStorage.getItem("selectedRoute"));
+    const fileId = localStorage.getItem("selected_file_id");
+    const fileName = localStorage.getItem("selected_file_name");
+    const accessToken = sessionStorage.getItem("access_token");
 
-    if (!routeInfo || !routeInfo.downloadUrl) {
-      document.getElementById("routeName").textContent = "No route selected.";
-      throw new Error("No route found in localStorage.");
+    const nameEl = document.getElementById("routeName");
+
+    if (!fileId || !fileName || !accessToken) {
+      nameEl.textContent = "Missing route info.";
+      throw new Error("Missing file ID, name, or token");
     }
 
-    document.getElementById("routeName").textContent = `Now viewing: ${routeInfo.name}`;
+    nameEl.textContent = `Now viewing: ${fileName}`;
 
-    async function loadRoute(url) {
+    async function getDownloadUrl(id) {
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch file metadata");
+      const data = await res.json();
+      return data['@microsoft.graph.downloadUrl'];
+    }
+
+    async function loadRoute() {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Fetch failed");
+        const downloadUrl = await getDownloadUrl(fileId);
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error("Failed to download route file");
 
         const fileText = await res.text();
 
-        if (routeInfo.name.endsWith(".geojson")) {
+        if (fileName.endsWith(".geojson")) {
           const geojson = JSON.parse(fileText);
           renderMapWithGeoJSON(geojson);
           renderElevationFromGeoJSON(geojson);
-        } else if (routeInfo.name.endsWith(".gpx")) {
+        } else if (fileName.endsWith(".gpx")) {
           const parser = new DOMParser();
           const xml = parser.parseFromString(fileText, "application/xml");
           renderMapWithGPX(xml);
@@ -64,7 +78,7 @@
         }
       } catch (err) {
         console.error(err);
-        document.getElementById("routeName").textContent = "Failed to load route.";
+        nameEl.textContent = "Failed to load route.";
       }
     }
 
@@ -92,7 +106,6 @@
       const coords = geojson.features[0]?.geometry?.coordinates || [];
       const elevations = coords.map(c => c[2] || 0);
       const distances = coords.map((_, i) => i);
-
       renderElevationChart(distances, elevations);
     }
 
@@ -100,7 +113,6 @@
       const trkpts = Array.from(xml.querySelectorAll("trkpt"));
       const elevations = trkpts.map(pt => parseFloat(pt.querySelector("ele")?.textContent || "0"));
       const distances = trkpts.map((_, i) => i);
-
       renderElevationChart(distances, elevations);
     }
 
@@ -126,7 +138,7 @@
       });
     }
 
-    loadRoute(routeInfo.downloadUrl);
+    loadRoute();
   </script>
 </body>
 </html>
