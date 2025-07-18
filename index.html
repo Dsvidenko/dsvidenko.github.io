@@ -144,9 +144,9 @@
             scopes: ["Files.Read.All", "User.Read"],
             account: accounts[0]
           });
-
           localStorage.setItem("access_token", tokenResponse.accessToken);
-          showApp(accounts[0]);
+          window.location.href = "routes.html";
+
         } catch (err) {
           console.warn("Session could not be restored:", err);
         }
