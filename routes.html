@@ -107,11 +107,9 @@
           const viewBtn = document.createElement("button");
           viewBtn.textContent = "View";
           viewBtn.onclick = () => {
-            localStorage.setItem("selectedRoute", JSON.stringify({
-              name: file.name,
-              downloadUrl: file["@microsoft.graph.downloadUrl"]
-            }));
-            window.location.href = "view.html";
+            localStorage.setItem('selected_file_id', id);
+            localStorage.setItem('selected_file_name', name);
+            window.location.href = 'view.html';
           };
 
           li.appendChild(viewBtn);
