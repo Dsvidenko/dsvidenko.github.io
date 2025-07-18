@@ -97,39 +97,44 @@
     }
 
     async function handleLogin() {
-      connectBtn.disabled = true;
-      connectBtn.textContent = "Connecting...";
-      loginMessage.textContent = "";
+  connectBtn.disabled = true;
+  connectBtn.textContent = "Connecting...";
+  loginMessage.textContent = "";
 
-      try {
-        const loginResponse = await msalInstance.loginPopup({
-          scopes: ["Files.Read.All", "User.Read"]
-        });
+  try {
+    const loginResponse = await msalInstance.loginPopup({
+      scopes: ["Files.Read.All", "User.Read"]
+    });
 
-        if (!loginResponse.account) {
-          loginMessage.textContent = "Login failed: No account returned.";
-          return;
-        }
-
-        msalInstance.setActiveAccount(loginResponse.account);
-
-        // Now request access token
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          scopes: ["Files.Read.All", "User.Read"],
-          account: loginResponse.account
-        });
-
-        // Save token for use in routes.html
-        localStorage.setItem("access_token", tokenResponse.accessToken);
-        showApp(loginResponse.account);
-      } catch (err) {
-        console.error("Auth error:", err);
-        loginMessage.textContent = err.message || "Login was canceled or failed.";
-      } finally {
-        connectBtn.disabled = false;
-        connectBtn.textContent = "Connect to OneDrive";
-      }
+    if (!loginResponse.account) {
+      loginMessage.textContent = "Login failed: No account returned.";
+      return;
     }
+
+    msalInstance.setActiveAccount(loginResponse.account);
+
+    const tokenResponse = await msalInstance.acquireTokenSilent({
+      scopes: ["Files.Read.All", "User.Read"],
+      account: loginResponse.account
+    });
+
+    localStorage.setItem("access_token", tokenResponse.accessToken);
+
+    showApp(loginResponse.account);
+
+    // **Wait a tiny bit to ensure localStorage is written, then redirect:**
+    setTimeout(() => {
+      window.location.href = "routes.html";
+    }, 100); // 100ms delay
+
+  } catch (err) {
+    console.error("Auth error:", err);
+    loginMessage.textContent = err.message || "Login was canceled or failed.";
+  } finally {
+    connectBtn.disabled = false;
+    connectBtn.textContent = "Connect to OneDrive";
+  }
+}
 
     connectBtn.addEventListener("click", handleLogin);
 
